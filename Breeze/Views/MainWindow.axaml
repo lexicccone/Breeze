@@ -223,6 +223,7 @@
         <Button Grid.Column="0"
                 Classes="tool"
                 Command="{Binding SelectedTab.BackCommand}"
+                controls:MiddleClick.Command="{Binding SelectedTab.BackInNewTabCommand}"
                 IsEnabled="{Binding SelectedTab.CanGoBack}"
                 ToolTip.Tip="Back"
                 AutomationProperties.Name="Back">
@@ -232,6 +233,7 @@
         <Button Grid.Column="1"
                 Classes="tool"
                 Command="{Binding SelectedTab.ForwardCommand}"
+                controls:MiddleClick.Command="{Binding SelectedTab.ForwardInNewTabCommand}"
                 IsEnabled="{Binding SelectedTab.CanGoForward}"
                 ToolTip.Tip="Forward"
                 AutomationProperties.Name="Forward">
@@ -243,6 +245,7 @@
                   IsVisible="{Binding !SelectedTab.IsLoading}"
                   IsEnabled="{Binding SelectedTab.IsWebPage}"
                   Command="{Binding SelectedTab.ReloadCommand}"
+                  controls:MiddleClick.Command="{Binding SelectedTab.ReloadInNewTabCommand}"
                   ToolTip.Tip="Reload"
                   AutomationProperties.Name="Reload">
             <PathIcon Data="{StaticResource IconArrowClockwise}" />

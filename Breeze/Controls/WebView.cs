@@ -16,6 +16,8 @@ namespace Breeze.Controls;
 /// <summary>Hosts a WebView2 instance inside the Avalonia visual tree and publishes its navigation state.</summary>
 public sealed class WebView : NativeControlHost, IWebNavigator
 {
+    private const int MaxHistoryEntries = 100;
+
     public static readonly StyledProperty<string?> SourceProperty =
         AvaloniaProperty.Register<WebView, string?>(nameof(Source), defaultBindingMode: BindingMode.TwoWay);
 
@@ -45,6 +47,11 @@ public sealed class WebView : NativeControlHost, IWebNavigator
     private bool _painted;
     private bool _internalRequested;
     private Bitmap? _ownedFavicon;
+
+    /// <summary>WebView2 exposes no navigation history list, so the visited entries are mirrored
+    /// here. Only used to answer "what is one step back or forward", never to navigate.</summary>
+    private readonly List<string> _entries = [];
+    private int _position = -1;
     private string? _documentTitle;
     private IImage? _favicon;
     private bool _canGoBack;
@@ -88,6 +95,12 @@ public sealed class WebView : NativeControlHost, IWebNavigator
         get => _isLoading;
         set => SetAndRaise(IsLoadingProperty, ref _isLoading, value);
     }
+
+    public string? CurrentUrl => _position >= 0 ? _entries[_position] : null;
+
+    public string? PreviousUrl => _position > 0 ? _entries[_position - 1] : null;
+
+    public string? NextUrl => _position >= 0 && _position + 1 < _entries.Count ? _entries[_position + 1] : null;
 
     public void GoBack()
     {
@@ -199,8 +212,8 @@ public sealed class WebView : NativeControlHost, IWebNavigator
         Navigate(Source);
     }
 
-    /// <summary>Keeps the engine's empty page colour and the color scheme sites see in step
-    /// with the Breeze theme, so pages that support dark mode follow along.</summary>
+    /// <summary>Keeps this view's empty page colour in step with the Breeze theme. The colour
+    /// scheme sites observe is profile wide and is applied by <see cref="Theming" />.</summary>
     private void ApplyTheme()
     {
         if (_controller is null)
@@ -208,15 +221,9 @@ public sealed class WebView : NativeControlHost, IWebNavigator
             return;
         }
 
-        var dark = ActualThemeVariant == ThemeVariant.Dark;
-
-        _controller.DefaultBackgroundColor = dark
+        _controller.DefaultBackgroundColor = ActualThemeVariant == ThemeVariant.Dark
             ? System.Drawing.Color.FromArgb(0x17, 0x17, 0x1A)
             : System.Drawing.Color.FromArgb(0xFB, 0xFB, 0xFD);
-
-        _controller.CoreWebView2.Profile.PreferredColorScheme = dark
-            ? CoreWebView2PreferredColorScheme.Dark
-            : CoreWebView2PreferredColorScheme.Light;
     }
 
     private void UpdateVisibility()
@@ -243,6 +250,7 @@ public sealed class WebView : NativeControlHost, IWebNavigator
         StartPage.Register(webView);
         StartPageBridge.Attach(webView);
         BrowsingData.Register(webView);
+        Theming.Register(webView);
 
         webView.DOMContentLoaded += (_, _) =>
         {
@@ -320,9 +328,47 @@ public sealed class WebView : NativeControlHost, IWebNavigator
 
     private void PublishSource(string source)
     {
+        TrackHistory(source);
+
         _syncingSource = true;
         Source = source;
         _syncingSource = false;
+    }
+
+    /// <summary>Mirrors the engine's history: a document URL matching the neighbouring entry means
+    /// the user moved through history, anything else is a new entry that truncates what was ahead.</summary>
+    private void TrackHistory(string url)
+    {
+        if (string.IsNullOrEmpty(url) || url == CurrentUrl)
+        {
+            return;
+        }
+
+        if (_position > 0 && _entries[_position - 1] == url)
+        {
+            _position--;
+            return;
+        }
+
+        if (_position + 1 < _entries.Count && _entries[_position + 1] == url)
+        {
+            _position++;
+            return;
+        }
+
+        if (_position + 1 < _entries.Count)
+        {
+            _entries.RemoveRange(_position + 1, _entries.Count - _position - 1);
+        }
+
+        _entries.Add(url);
+
+        if (_entries.Count > MaxHistoryEntries)
+        {
+            _entries.RemoveAt(0);
+        }
+
+        _position = _entries.Count - 1;
     }
 
     private void UpdateHistory(CoreWebView2 webView)

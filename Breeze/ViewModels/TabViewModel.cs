@@ -30,6 +30,11 @@ public class TabViewModel : ViewModelBase, IWebNavigatorHost
         ReloadCommand = new RelayCommand(() => Navigator?.Reload());
         StopCommand = new RelayCommand(() => Navigator?.Stop());
         CloseCommand = new RelayCommand(() => close(this));
+
+        // Middle click equivalents: act in a new tab and leave this tab where it is.
+        BackInNewTabCommand = new RelayCommand(() => OpenInNewTab(Navigator?.PreviousUrl));
+        ForwardInNewTabCommand = new RelayCommand(() => OpenInNewTab(Navigator?.NextUrl));
+        ReloadInNewTabCommand = new RelayCommand(() => OpenInNewTab(Navigator?.CurrentUrl ?? Address));
     }
 
     public IWebNavigator? Navigator { get; set; }
@@ -47,6 +52,12 @@ public class TabViewModel : ViewModelBase, IWebNavigatorHost
     public ICommand StopCommand { get; }
 
     public ICommand CloseCommand { get; }
+
+    public ICommand BackInNewTabCommand { get; }
+
+    public ICommand ForwardInNewTabCommand { get; }
+
+    public ICommand ReloadInNewTabCommand { get; }
 
     /// <summary>Current document URL; also the navigation request when set from the address bar.</summary>
     public string? Address
@@ -124,6 +135,16 @@ public class TabViewModel : ViewModelBase, IWebNavigatorHost
     {
         get => _isSelected;
         set => SetProperty(ref _isSelected, value);
+    }
+
+    /// <summary>Opens a URL in a new tab. Nothing happens when there is no entry to open, which is
+    /// how a middle click on Back or Forward behaves at the ends of the history.</summary>
+    private void OpenInNewTab(string? url)
+    {
+        if (!string.IsNullOrWhiteSpace(url))
+        {
+            RequestTab(url);
+        }
     }
 
     private void Submit()
