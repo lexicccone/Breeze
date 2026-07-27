@@ -57,7 +57,7 @@ Breeze is built to keep browsing data on the machine. What that means concretely
 - Search queries go to the engine you select. Favicons are fetched from the site itself, never
   through a third-party icon service, and never from local or private network addresses.
 
-Two honest caveats:
+Things to Know:
 
 - **"Zero telemetry" is not a claim we can currently make.** Breeze adds none, and the known
   URL-reporting channel is switched off, but Breeze embeds the Microsoft Edge WebView2 runtime
