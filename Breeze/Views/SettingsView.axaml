@@ -162,7 +162,11 @@
               <TextBox Classes="field"
                        Text="{Binding DownloadFolder}"
                        AutomationProperties.Name="Default download location" />
-              <CheckBox Margin="0,10,0,0" Content="Ask where to save each file" IsChecked="{Binding AskWhereToSave}" />
+              <CheckBox Margin="0,10,0,0"
+                        Content="Ask where to save each file"
+                        IsChecked="{Binding AskWhereToSave, Mode=OneWay}"
+                        IsEnabled="False" />
+              <TextBlock Classes="hint" Text="Not available yet. Files are saved to the folder above." />
             </StackPanel>
           </ScrollViewer>
 
@@ -226,7 +230,10 @@
                       Command="{Binding OpenDownloadFolderCommand}" />
 
               <TextBlock Classes="group" Text="Before downloading" />
-              <CheckBox Content="Ask where to save each file" IsChecked="{Binding AskWhereToSave}" />
+              <CheckBox Content="Ask where to save each file"
+                        IsChecked="{Binding AskWhereToSave, Mode=OneWay}"
+                        IsEnabled="False" />
+              <TextBlock Classes="hint" Text="Not available yet. Files are saved to the folder above." />
             </StackPanel>
           </ScrollViewer>
 

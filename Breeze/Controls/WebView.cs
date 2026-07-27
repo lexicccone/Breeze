@@ -255,6 +255,20 @@ public sealed class WebView : NativeControlHost, IWebNavigator
             }
         };
 
+        // Downloads land in the configured folder under a sanitized name, never wherever the
+        // server's suggested path points.
+        webView.DownloadStarting += (_, e) =>
+        {
+            if (Downloads.Resolve(e.ResultFilePath) is { } path)
+            {
+                e.ResultFilePath = path;
+            }
+            else
+            {
+                e.Cancel = true;
+            }
+        };
+
         webView.ProcessFailed += (_, e) => ErrorLog.Write("engine", new InvalidOperationException(e.ProcessFailedKind.ToString()));
 
         webView.SourceChanged += (_, _) => PublishSource(webView.Source);
