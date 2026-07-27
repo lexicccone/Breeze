@@ -221,6 +221,10 @@ public sealed class WebView : NativeControlHost, IWebNavigator
         settings.IsPasswordAutosaveEnabled = false;
         settings.IsSwipeNavigationEnabled = false;
 
+        // Reputation checking sends visited URLs to a Microsoft service. Breeze promises no
+        // remote endpoint ever sees the user's browsing, so it is off.
+        settings.IsReputationCheckingRequired = false;
+
         webView.Profile.PreferredTrackingPreventionLevel = CoreWebView2TrackingPreventionLevel.Strict;
 
         StartPage.Register(webView);
