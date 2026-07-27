@@ -24,6 +24,9 @@ const confirmText = document.getElementById("confirm-text");
 const menu = document.getElementById("menu");
 
 let shortcuts = [];
+// Revision of the list this page last rendered. Sent with every change so the host can refuse
+// an edit based on a view another tab has already moved on from.
+let revision = -1;
 let editIndex = -1;
 let menuIndex = -1;
 let dragIndex = -1;
@@ -48,7 +51,7 @@ function resolve(text) {
 
 function send(message) {
   if (host) {
-    host.postMessage(message);
+    host.postMessage({ ...message, revision });
   }
 }
 
@@ -58,6 +61,7 @@ if (host) {
     if (data && data.type === "shortcuts") {
       // Defence in depth: only web URLs are ever put into a tile's href.
       shortcuts = Array.isArray(data.items) ? data.items.filter(item => /^https?:\/\//i.test(item.url)) : [];
+      revision = typeof data.revision === "number" ? data.revision : -1;
       if (typeof data.searchUrl === "string" && data.searchUrl) {
         searchUrl = data.searchUrl;
       }

@@ -40,18 +40,22 @@ public static class StartPageBridge
             return;
         }
 
+        // The page echoes the revision it last rendered; a stale one is refused by the store and
+        // the page is refreshed with the current list below.
+        var revision = Number(message, "revision");
+
         switch (type.GetString())
         {
             case "list":
                 break;
             case "save":
-                await ShortcutStore.SaveAsync(Number(message, "index"), Text(message, "name"), Text(message, "url"));
+                await ShortcutStore.SaveAsync(revision, Number(message, "index"), Text(message, "name"), Text(message, "url"));
                 break;
             case "delete":
-                ShortcutStore.Remove(Number(message, "index"));
+                await ShortcutStore.RemoveAsync(revision, Number(message, "index"));
                 break;
             case "move":
-                ShortcutStore.Move(Number(message, "from"), Number(message, "to"));
+                await ShortcutStore.MoveAsync(revision, Number(message, "from"), Number(message, "to"));
                 break;
             default:
                 return;
@@ -62,7 +66,13 @@ public static class StartPageBridge
 
     private static void Publish(CoreWebView2 webView) =>
         webView.PostWebMessageAsJson(JsonSerializer.Serialize(
-            new { type = "shortcuts", items = ShortcutStore.Items, searchUrl = SearchEngines.Current.QueryUrl }, Options));
+            new
+            {
+                type = "shortcuts",
+                items = ShortcutStore.Items,
+                revision = ShortcutStore.Revision,
+                searchUrl = SearchEngines.Current.QueryUrl
+            }, Options));
 
     private static string Text(JsonElement message, string name) =>
         message.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
