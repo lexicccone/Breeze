@@ -1,4 +1,5 @@
 using System.Net.Http;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace Breeze.Services;
@@ -39,9 +40,19 @@ public static partial class FaviconCache
                 continue;
             }
 
-            var name = site.Host + Extension(candidate, icon.Value.ContentType);
-            Directory.CreateDirectory(AppPaths.Favicons);
-            await File.WriteAllBytesAsync(Path.Combine(AppPaths.Favicons, name), icon.Value.Data);
+            var name = FileName(site.Host, Extension(candidate, icon.Value.ContentType));
+
+            try
+            {
+                Directory.CreateDirectory(AppPaths.Favicons);
+                await File.WriteAllBytesAsync(Path.Combine(AppPaths.Favicons, name), icon.Value.Data);
+            }
+            catch (Exception error)
+            {
+                ErrorLog.Write("favicon.save", error);
+                return null;
+            }
+
             return name;
         }
 
@@ -66,8 +77,24 @@ public static partial class FaviconCache
             return null;
         }
 
-        var match = Directory.EnumerateFiles(AppPaths.Favicons, host + ".*").FirstOrDefault();
+        var match = Directory.EnumerateFiles(AppPaths.Favicons, Safe(host) + ".*").FirstOrDefault();
         return match is null ? null : Path.GetFileName(match);
+    }
+
+    private static string FileName(string host, string extension) => Safe(host) + extension;
+
+    /// <summary>Reduces a host to characters that are always valid in a file name and in a
+    /// search pattern, so hosts such as the IPv6 literal [::1] cannot break the write.</summary>
+    private static string Safe(string host)
+    {
+        var name = new StringBuilder(host.Length);
+
+        foreach (var character in host)
+        {
+            name.Append(char.IsAsciiLetterOrDigit(character) || character is '.' or '-' ? character : '_');
+        }
+
+        return name.ToString();
     }
 
     /// <summary>Icons declared by the page, best quality first, with the default path last.</summary>

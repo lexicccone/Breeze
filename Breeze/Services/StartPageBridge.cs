@@ -21,9 +21,11 @@ public static class StartPageBridge
             {
                 await HandleAsync(webView, e.WebMessageAsJson);
             }
-            catch (JsonException)
+            catch (Exception error)
             {
-                // Malformed message from the page: nothing to do.
+                // A malformed message, or a failed disk or network operation, must not reach
+                // the event loop: this handler is async void.
+                ErrorLog.Write("bridge", error);
             }
         };
 

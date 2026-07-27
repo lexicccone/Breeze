@@ -21,8 +21,15 @@ public static class SettingsStore
 
     public static void Save()
     {
-        Directory.CreateDirectory(AppPaths.Root);
-        File.WriteAllText(AppPaths.SettingsFile, JsonSerializer.Serialize(Current, Options));
+        try
+        {
+            Directory.CreateDirectory(AppPaths.Root);
+            File.WriteAllText(AppPaths.SettingsFile, JsonSerializer.Serialize(Current, Options));
+        }
+        catch (Exception error)
+        {
+            ErrorLog.Write("settings.save", error);
+        }
     }
 
     /// <summary>Address the first tab opens with.</summary>

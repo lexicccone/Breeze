@@ -273,7 +273,15 @@ public sealed class WebView : NativeControlHost, IWebNavigator
             return;
         }
 
-        _controller.CoreWebView2.Navigate(source);
+        try
+        {
+            _controller.CoreWebView2.Navigate(source);
+        }
+        catch (Exception error)
+        {
+            // The engine rejects malformed URIs; a bad address must not end the process.
+            ErrorLog.Write("navigate", error);
+        }
     }
 
     private void UpdateBounds()

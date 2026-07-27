@@ -91,7 +91,14 @@ public static class ShortcutStore
 
     private static void Persist(List<Shortcut> items)
     {
-        Directory.CreateDirectory(AppPaths.Root);
-        File.WriteAllText(AppPaths.ShortcutsFile, JsonSerializer.Serialize(items, Options));
+        try
+        {
+            Directory.CreateDirectory(AppPaths.Root);
+            File.WriteAllText(AppPaths.ShortcutsFile, JsonSerializer.Serialize(items, Options));
+        }
+        catch (Exception error)
+        {
+            ErrorLog.Write("shortcuts.save", error);
+        }
     }
 }

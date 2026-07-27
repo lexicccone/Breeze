@@ -13,4 +13,6 @@ public static class AppPaths
     public static string ShortcutsFile { get; } = Path.Combine(Root, "shortcuts.json");
 
     public static string SettingsFile { get; } = Path.Combine(Root, "settings.json");
+
+    public static string ErrorLogFile { get; } = Path.Combine(Root, "errors.log");
 }
