@@ -12,8 +12,10 @@ public static class AppIdentity
     /// requests. Set this once the repository is published.</summary>
     private const string RepositoryUrl = "";
 
+    /// <summary>Application version, read from assembly metadata. The single source is the
+    /// Version property in Breeze.csproj; nothing in the code hard codes a version.</summary>
     public static string Version { get; } =
-        typeof(AppIdentity).Assembly.GetName().Version?.ToString(3) ?? "1.0.0";
+        typeof(AppIdentity).Assembly.GetName().Version?.ToString(3) ?? "0.0.0";
 
     /// <summary>Identity Breeze sends on its own HTTP requests. It never imitates another
     /// browser: requests made by Breeze itself are declared as such.</summary>

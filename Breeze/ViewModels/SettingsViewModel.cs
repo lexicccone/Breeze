@@ -140,8 +140,7 @@ public sealed class SettingsViewModel : ViewModelBase
         set => Store(() => _settings.SearchEngine = value.Name, _settings.SearchEngine != value.Name);
     }
 
-    public string Version =>
-        typeof(SettingsViewModel).Assembly.GetName().Version?.ToString(3) ?? "1.0.0";
+    public string Version => $"v{AppIdentity.Version}";
 
     public string RuntimeVersion => RuntimeInformation.FrameworkDescription;
 
