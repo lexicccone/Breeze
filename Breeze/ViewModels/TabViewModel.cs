@@ -18,9 +18,12 @@ public class TabViewModel : ViewModelBase, IWebNavigatorHost
     private bool _isLoading;
     private bool _isSelected;
 
-    public TabViewModel(Action<TabViewModel> close, string? address = null)
+    private readonly Action<string>? _openTab;
+
+    public TabViewModel(Action<TabViewModel> close, string? address = null, Action<string>? openTab = null)
     {
         _address = address;
+        _openTab = openTab;
         SubmitCommand = new RelayCommand(Submit);
         BackCommand = new RelayCommand(() => Navigator?.GoBack());
         ForwardCommand = new RelayCommand(() => Navigator?.GoForward());
@@ -30,6 +33,8 @@ public class TabViewModel : ViewModelBase, IWebNavigatorHost
     }
 
     public IWebNavigator? Navigator { get; set; }
+
+    public void RequestTab(string url) => _openTab?.Invoke(url);
 
     public ICommand SubmitCommand { get; }
 

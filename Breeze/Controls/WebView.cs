@@ -233,6 +233,30 @@ public sealed class WebView : NativeControlHost, IWebNavigator
             UpdateVisibility();
         };
 
+        // Privacy first: camera, microphone, location, notifications and the rest are refused
+        // rather than falling back to the engine's own prompt.
+        webView.PermissionRequested += (_, e) =>
+        {
+            e.State = CoreWebView2PermissionState.Deny;
+            e.Handled = true;
+        };
+
+        // Popups become tabs, so no page can show a window without Breeze's address bar.
+        webView.NewWindowRequested += (_, e) =>
+        {
+            e.Handled = true;
+
+            if (Uri.TryCreate(e.Uri, UriKind.Absolute, out var target) &&
+                target.Scheme is "http" or "https" &&
+                !StartPage.IsInternal(e.Uri) &&
+                DataContext is IWebNavigatorHost host)
+            {
+                host.RequestTab(target.AbsoluteUri);
+            }
+        };
+
+        webView.ProcessFailed += (_, e) => ErrorLog.Write("engine", new InvalidOperationException(e.ProcessFailedKind.ToString()));
+
         webView.SourceChanged += (_, _) => PublishSource(webView.Source);
         webView.DocumentTitleChanged += (_, _) => DocumentTitle = webView.DocumentTitle;
         webView.FaviconChanged += async (_, _) => await UpdateFaviconAsync(webView);

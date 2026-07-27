@@ -15,7 +15,7 @@ public sealed class MainWindowViewModel : ViewModelBase, ITabReorder
     {
         NewTabCommand = new RelayCommand(NewTab);
         SettingsCommand = new RelayCommand(OpenSettings);
-        Add(new TabViewModel(CloseTab, SettingsStore.StartupAddress()));
+        Add(new TabViewModel(CloseTab, SettingsStore.StartupAddress(), OpenTab));
     }
 
     /// <summary>Raised when the last tab is closed and the window should follow.</summary>
@@ -77,7 +77,10 @@ public sealed class MainWindowViewModel : ViewModelBase, ITabReorder
         OnPropertyChanged(nameof(SelectedTab));
     }
 
-    private void NewTab() => Add(new TabViewModel(CloseTab, StartPage.Url));
+    private void NewTab() => Add(new TabViewModel(CloseTab, StartPage.Url, OpenTab));
+
+    /// <summary>Shows a URL a page asked to open in a new window as a tab instead.</summary>
+    private void OpenTab(string url) => Add(new TabViewModel(CloseTab, url, OpenTab));
 
     /// <summary>Focuses the open settings tab, or opens the single allowed one.</summary>
     private void OpenSettings()
