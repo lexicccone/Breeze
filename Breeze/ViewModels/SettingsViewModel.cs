@@ -234,16 +234,27 @@ public sealed class SettingsViewModel : ViewModelBase
         PrivacyStatus = result;
     }
 
+    /// <summary>Opens the download folder in Explorer. The stored value is treated as untrusted:
+    /// it must resolve to an existing directory, and it is passed as an argument rather than
+    /// shell executed, so it can never be resolved as a program to run.</summary>
     private void OpenDownloadFolder()
     {
         try
         {
-            Directory.CreateDirectory(DownloadFolder);
-            Process.Start(new ProcessStartInfo(DownloadFolder) { UseShellExecute = true })?.Dispose();
+            var folder = Path.GetFullPath(DownloadFolder);
+
+            if (!Directory.Exists(folder))
+            {
+                Directory.CreateDirectory(folder);
+            }
+
+            var start = new ProcessStartInfo("explorer.exe") { UseShellExecute = false };
+            start.ArgumentList.Add(folder);
+            Process.Start(start)?.Dispose();
         }
-        catch (Exception)
+        catch (Exception error)
         {
-            // Folder is unavailable; nothing to open.
+            ErrorLog.Write("downloads.open", error);
         }
     }
 
