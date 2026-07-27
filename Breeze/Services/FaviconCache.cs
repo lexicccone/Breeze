@@ -9,6 +9,11 @@ public static partial class FaviconCache
 {
     private const int MaxIconBytes = 1024 * 1024;
 
+    /// <summary>Only the head of a page is needed to find its icon links.</summary>
+    private const int MaxHtmlBytes = 512 * 1024;
+
+    private const int RegexTimeoutMilliseconds = 1000;
+
     /// <summary>Assumed edge length for icons that do not declare a size.</summary>
     private const int VectorScore = 1000;
     private const int AppleTouchScore = 180;
@@ -103,9 +108,9 @@ public static partial class FaviconCache
         var declared = new Dictionary<Uri, int>();
         var html = await ReadTextAsync(new Uri(site, "/"));
 
-        if (html is not null)
+        try
         {
-            foreach (var link in LinkPattern().Matches(html).Cast<Match>())
+            foreach (var link in LinkPattern().Matches(html ?? string.Empty).Cast<Match>())
             {
                 // mask-icon is a monochrome silhouette, never a good display icon.
                 if (link.Value.Contains("mask-icon", StringComparison.OrdinalIgnoreCase) ||
@@ -122,6 +127,11 @@ public static partial class FaviconCache
                     declared[icon] = score;
                 }
             }
+        }
+        catch (RegexMatchTimeoutException error)
+        {
+            // Pathological markup: fall back to the default icon path below.
+            ErrorLog.Write("favicon.parse", error);
         }
 
         var candidates = declared
@@ -193,11 +203,37 @@ public static partial class FaviconCache
         }
     }
 
+    /// <summary>Reads at most <see cref="MaxHtmlBytes" /> of markup. The response body is
+    /// attacker controlled, so it is never buffered without a limit.</summary>
     private static async Task<string?> ReadTextAsync(Uri url)
     {
         try
         {
-            return await Client.GetStringAsync(url);
+            using var response = await Client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+            var contentType = response.Content.Headers.ContentType?.MediaType;
+
+            if (!response.IsSuccessStatusCode ||
+                contentType?.Contains("html", StringComparison.OrdinalIgnoreCase) != true)
+            {
+                return null;
+            }
+
+            await using var body = await response.Content.ReadAsStreamAsync();
+            var buffer = new byte[MaxHtmlBytes];
+            var read = 0;
+
+            while (read < buffer.Length)
+            {
+                var chunk = await body.ReadAsync(buffer.AsMemory(read));
+                if (chunk == 0)
+                {
+                    break;
+                }
+
+                read += chunk;
+            }
+
+            return Encoding.UTF8.GetString(buffer, 0, read);
         }
         catch (Exception)
         {
@@ -227,12 +263,12 @@ public static partial class FaviconCache
         };
     }
 
-    [GeneratedRegex("""<link\b[^>]*rel\s*=\s*["'][^"']*icon[^"']*["'][^>]*>""", RegexOptions.IgnoreCase)]
+    [GeneratedRegex("""<link\b[^>]*rel\s*=\s*["'][^"']*icon[^"']*["'][^>]*>""", RegexOptions.IgnoreCase, RegexTimeoutMilliseconds)]
     private static partial Regex LinkPattern();
 
-    [GeneratedRegex("""href\s*=\s*["']([^"']+)["']""", RegexOptions.IgnoreCase)]
+    [GeneratedRegex("""href\s*=\s*["']([^"']+)["']""", RegexOptions.IgnoreCase, RegexTimeoutMilliseconds)]
     private static partial Regex HrefPattern();
 
-    [GeneratedRegex("""sizes\s*=\s*["']([^"']+)["']""", RegexOptions.IgnoreCase)]
+    [GeneratedRegex("""sizes\s*=\s*["']([^"']+)["']""", RegexOptions.IgnoreCase, RegexTimeoutMilliseconds)]
     private static partial Regex SizesPattern();
 }

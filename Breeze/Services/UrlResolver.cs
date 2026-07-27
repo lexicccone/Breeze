@@ -27,6 +27,6 @@ public static partial class UrlResolver
         return SearchEngines.Current.Search(text);
     }
 
-    [GeneratedRegex(@"^(localhost(:\d+)?|[^\s/?#]+\.[^\s/?#.]{2,})([/?#]\S*)?$", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"^(localhost(:\d+)?|[^\s/?#]+\.[^\s/?#.]{2,})([/?#]\S*)?$", RegexOptions.IgnoreCase, 1000)]
     private static partial Regex HostPattern();
 }
