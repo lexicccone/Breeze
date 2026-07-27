@@ -42,6 +42,7 @@ public sealed class WebView : NativeControlHost, IWebNavigator
     private bool _detached;
     private bool _syncingSource;
     private bool _painted;
+    private bool _internalRequested;
     private string? _documentTitle;
     private IImage? _favicon;
     private bool _canGoBack;
@@ -90,6 +91,8 @@ public sealed class WebView : NativeControlHost, IWebNavigator
     {
         if (_controller?.CoreWebView2 is { CanGoBack: true } webView)
         {
+            // History entries were vetted when they were first navigated to.
+            _internalRequested = true;
             webView.GoBack();
         }
     }
@@ -98,11 +101,19 @@ public sealed class WebView : NativeControlHost, IWebNavigator
     {
         if (_controller?.CoreWebView2 is { CanGoForward: true } webView)
         {
+            _internalRequested = true;
             webView.GoForward();
         }
     }
 
-    public void Reload() => _controller?.CoreWebView2.Reload();
+    public void Reload()
+    {
+        if (_controller?.CoreWebView2 is { } webView)
+        {
+            _internalRequested = StartPage.IsInternal(webView.Source);
+            webView.Reload();
+        }
+    }
 
     public void Stop() => _controller?.CoreWebView2.Stop();
 
@@ -225,7 +236,25 @@ public sealed class WebView : NativeControlHost, IWebNavigator
         webView.SourceChanged += (_, _) => PublishSource(webView.Source);
         webView.DocumentTitleChanged += (_, _) => DocumentTitle = webView.DocumentTitle;
         webView.FaviconChanged += async (_, _) => await UpdateFaviconAsync(webView);
-        webView.NavigationStarting += (_, _) => IsLoading = true;
+
+        webView.NavigationStarting += (_, e) =>
+        {
+            var wasRequested = _internalRequested;
+            _internalRequested = false;
+
+            // Only Breeze may put its own origins on screen; a remote page must not be able to
+            // navigate a tab to the privileged start page.
+            if (StartPage.IsInternal(e.Uri) && !wasRequested)
+            {
+                e.Cancel = true;
+                return;
+            }
+
+            // Host messaging is the bridge's transport, so keep it off everywhere else.
+            webView.Settings.IsWebMessageEnabled = StartPage.IsStartPage(e.Uri);
+            IsLoading = true;
+        };
+
         webView.NavigationCompleted += (_, _) =>
         {
             IsLoading = false;
@@ -275,6 +304,7 @@ public sealed class WebView : NativeControlHost, IWebNavigator
 
         try
         {
+            _internalRequested = StartPage.IsInternal(source);
             _controller.CoreWebView2.Navigate(source);
         }
         catch (Exception error)
