@@ -56,7 +56,8 @@ if (host) {
   host.addEventListener("message", event => {
     const data = event.data;
     if (data && data.type === "shortcuts") {
-      shortcuts = Array.isArray(data.items) ? data.items : [];
+      // Defence in depth: only web URLs are ever put into a tile's href.
+      shortcuts = Array.isArray(data.items) ? data.items.filter(item => /^https?:\/\//i.test(item.url)) : [];
       if (typeof data.searchUrl === "string" && data.searchUrl) {
         searchUrl = data.searchUrl;
       }

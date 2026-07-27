@@ -20,9 +20,15 @@ public static class ShortcutStore
     private static List<Shortcut> Cache => _items ??= Load();
 
     /// <summary>Adds a shortcut, or replaces the one at <paramref name="index" /> when editing.</summary>
-    public static async Task<IReadOnlyList<Shortcut>> SaveAsync(int index, string name, string url)
+    public static async Task<IReadOnlyList<Shortcut>> SaveAsync(int index, string name, string rawUrl)
     {
         var items = Cache;
+
+        if (SafeUrl(rawUrl) is not { } url || string.IsNullOrWhiteSpace(name))
+        {
+            return items;
+        }
+
         var existing = index >= 0 && index < items.Count ? items[index] : null;
         var reusable = existing?.Url == url && FaviconCache.IsCached(existing.Icon);
         var icon = reusable ? existing!.Icon : await FaviconCache.EnsureAsync(url);
@@ -78,7 +84,7 @@ public static class ShortcutStore
             }
 
             var items = JsonSerializer.Deserialize<List<Shortcut>>(File.ReadAllText(AppPaths.ShortcutsFile), Options);
-            return items?.Where(Valid).ToList() ?? [];
+            return items?.Where(Valid).Select(Sanitize).ToList() ?? [];
         }
         catch (Exception)
         {
@@ -87,7 +93,26 @@ public static class ShortcutStore
     }
 
     private static bool Valid(Shortcut shortcut) =>
-        !string.IsNullOrWhiteSpace(shortcut.Name) && !string.IsNullOrWhiteSpace(shortcut.Url);
+        !string.IsNullOrWhiteSpace(shortcut.Name) && SafeUrl(shortcut.Url) is not null;
+
+    /// <summary>Drops an icon reference that does not name a plain file in the cache folder.</summary>
+    private static Shortcut Sanitize(Shortcut shortcut) =>
+        shortcut.Icon is null || SafeIconName(shortcut.Icon)
+            ? shortcut
+            : shortcut with { Icon = null };
+
+    private static bool SafeIconName(string icon) =>
+        icon.Length <= 128 &&
+        icon == Path.GetFileName(icon) &&
+        icon.IndexOfAny(Path.GetInvalidFileNameChars()) < 0 &&
+        !icon.Contains("..", StringComparison.Ordinal);
+
+    /// <summary>Shortcuts may only point at web pages. The stored file is untrusted input, so
+    /// a scheme such as javascript: must never reach the privileged start page origin.</summary>
+    private static string? SafeUrl(string? url) =>
+        Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https"
+            ? uri.AbsoluteUri
+            : null;
 
     private static void Persist(List<Shortcut> items)
     {
