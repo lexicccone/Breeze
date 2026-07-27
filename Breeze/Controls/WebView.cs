@@ -6,6 +6,7 @@ using Avalonia.Data;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
+using Avalonia.Threading;
 using Breeze.Models;
 using Breeze.Services;
 using Microsoft.Web.WebView2.Core;
@@ -43,6 +44,7 @@ public sealed class WebView : NativeControlHost, IWebNavigator
     private bool _syncingSource;
     private bool _painted;
     private bool _internalRequested;
+    private Bitmap? _ownedFavicon;
     private string? _documentTitle;
     private IImage? _favicon;
     private bool _canGoBack;
@@ -130,6 +132,17 @@ public sealed class WebView : NativeControlHost, IWebNavigator
         _detached = true;
         _controller?.Close();
         _controller = null;
+
+        // Drop the binding before releasing the bitmap so nothing can render a disposed image.
+        var icon = _ownedFavicon;
+        _ownedFavicon = null;
+        Favicon = null;
+
+        if (icon is not null)
+        {
+            Dispatcher.UIThread.Post(icon.Dispose, DispatcherPriority.Background);
+        }
+
         base.DestroyNativeControlCore(control);
     }
 
@@ -322,18 +335,32 @@ public sealed class WebView : NativeControlHost, IWebNavigator
     {
         if (string.IsNullOrEmpty(webView.FaviconUri))
         {
-            Favicon = null;
+            ShowFavicon(null);
             return;
         }
 
         try
         {
             await using var icon = await webView.GetFaviconAsync(CoreWebView2FaviconImageFormat.Png);
-            Favicon = new Bitmap(icon);
+            ShowFavicon(new Bitmap(icon));
         }
         catch (Exception)
         {
-            Favicon = null;
+            ShowFavicon(null);
+        }
+    }
+
+    /// <summary>Publishes a favicon and releases the one it replaces. Disposal is deferred by one
+    /// dispatcher turn so the bindings have already moved to the new bitmap.</summary>
+    private void ShowFavicon(Bitmap? icon)
+    {
+        var previous = _ownedFavicon;
+        _ownedFavicon = icon;
+        Favicon = icon;
+
+        if (previous is not null)
+        {
+            Dispatcher.UIThread.Post(previous.Dispose, DispatcherPriority.Background);
         }
     }
 
