@@ -1,21 +1,30 @@
 # Breeze
 
-A lightweight browser shell for Windows, built with Avalonia and Microsoft Edge WebView2. The
-chrome is native UI; page rendering is delegated to the WebView2 runtime.
+A lightweight, privacy-focused web browser built with Avalonia and WebView2.
 
-Breeze is early and incomplete. The list below is what actually works today.
+> Breeze currently targets Windows. Linux and macOS are not supported.
+
+<p align="center">
+  <img src="docs/images/Homepage.png" alt="Breeze homepage" width="48%">
+  <img src="docs/images/Settings.png" alt="Breeze settings" width="48%">
+</p>
+
+## Project Status
+
+Breeze is under active development. Expect breaking changes, UI refinements and new features
+until the first stable release.
 
 ## What works
 
 - Tabs: open, close, switch, and drag to reorder. Closing the last tab closes the window.
 - Address bar: URLs navigate, anything else searches with the selected engine.
 - Back, forward, reload and stop.
-- A bundled start page served from disk with a search box and manually managed shortcuts
+- A bundled homepage served from disk with a search box and manually managed shortcuts
   (create, edit, delete, drag to reorder), stored as readable JSON.
 - Favicons for shortcuts, discovered from the site and cached on disk.
 - A settings page hosted in a tab as native UI, covering startup page, theme, search engine,
   the download folder, and clearing history, cookies and cache.
-- Light and dark themes, applied to the Breeze UI, the start page, and passed to sites through
+- Light and dark themes, applied to the Breeze UI, the homepage, and passed to sites through
   the engine's preferred colour scheme.
 
 ## Not implemented yet
@@ -46,7 +55,7 @@ Breeze is built to keep browsing data on the machine. What that means concretely
 - Edge reputation checking (SmartScreen), which sends visited URLs to a Microsoft service, is
   explicitly disabled.
 - Search queries go to the engine you select. Favicons are fetched from the site itself, never
-  through a third-party icon service.
+  through a third-party icon service, and never from local or private network addresses.
 
 Two honest caveats:
 
@@ -63,29 +72,69 @@ Two honest caveats:
 Breeze has had one internal security review; findings rated critical and high were fixed, and
 the notable ones are worth stating plainly:
 
-- The start page is the only origin allowed to talk to the host process, matched on parsed
+- The homepage is the only origin allowed to talk to the host process, matched on parsed
   origin, and host messaging is switched off on every other page.
 - Remote pages cannot navigate a tab onto Breeze's internal pages.
-- Shortcut URLs are restricted to `http` and `https` on save and on load, and the start page
+- Shortcut URLs are restricted to `http` and `https` on save and on load, and the homepage
   carries a restrictive content security policy.
 - Downloads are confined to the configured folder with sanitised names.
 - Requests to open new windows become tabs, so nothing renders without a visible address bar.
+- Favicon discovery rejects non-web schemes and any destination, including redirect targets,
+  that resolves to a loopback, private or link-local address.
 
-Breeze has not had an external security audit. It is a hobby-scale project embedding a browser
-engine, and it should not be treated as hardened. See [SECURITY.md](SECURITY.md) to report an
-issue.
+Breeze is an early-stage project and has not yet undergone an external security audit. See
+[SECURITY.md](SECURITY.md) to report an issue.
 
 ## Building
 
 Requires the .NET 10 SDK and the Microsoft Edge WebView2 runtime (present on current Windows
 installs).
 
-```cmd
-dotnet build Breeze.slnx
-dotnet run --project Breeze\Breeze.csproj
+```bash
+dotnet build
+dotnet run --project Breeze
 ```
 
-## Licence
+## Roadmap
 
-Not yet chosen. Until a licence file is added, no permissions are granted beyond viewing the
-source.
+### Browsing
+
+- [ ] Bookmarks
+- [ ] History page
+- [ ] Downloads manager
+- [ ] Find in page
+- [ ] Reopen closed tab
+- [ ] Restore previous session
+- [ ] Pinned tabs
+- [ ] Mute tabs
+- [ ] Incognito mode
+
+### Homepage
+
+- [ ] Loading animation in the favicon position while a shortcut is being created instead of delaying the shortcut until the favicon finishes downloading.
+- [ ] Import/export shortcuts
+- [ ] Homepage customization
+
+### User Interface
+
+- [ ] Compact mode
+- [ ] UI scaling
+- [ ] Keyboard shortcut customization
+- [ ] Custom accent colors
+
+### Privacy & Security
+
+- [ ] Permission prompts
+- [ ] Complete a network capture of an idle Breeze session to validate privacy claims
+- [ ] Cookie and site data controls
+
+### Long-term
+
+- [ ] Multiple user profiles
+- [ ] Guest mode
+- [ ] Cross-platform support
+
+## License
+
+Breeze is licensed under the MIT License.
+See [LICENSE](LICENSE) for details.
