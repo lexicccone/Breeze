@@ -118,8 +118,7 @@ public static class ShortcutStore
     {
         try
         {
-            Directory.CreateDirectory(AppPaths.Root);
-            File.WriteAllText(AppPaths.ShortcutsFile, JsonSerializer.Serialize(items, Options));
+            AppPaths.WriteAtomic(AppPaths.ShortcutsFile, JsonSerializer.Serialize(items, Options));
         }
         catch (Exception error)
         {

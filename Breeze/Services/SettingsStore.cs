@@ -23,8 +23,7 @@ public static class SettingsStore
     {
         try
         {
-            Directory.CreateDirectory(AppPaths.Root);
-            File.WriteAllText(AppPaths.SettingsFile, JsonSerializer.Serialize(Current, Options));
+            AppPaths.WriteAtomic(AppPaths.SettingsFile, JsonSerializer.Serialize(Current, Options));
         }
         catch (Exception error)
         {
