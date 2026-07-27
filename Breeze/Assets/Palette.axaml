@@ -1,0 +1,33 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!-- Shared Breeze palette. Rest brushes carry the hover colour at zero alpha so fades
+       stay in one hue instead of dipping through a muddy intermediate. -->
+  <ResourceDictionary.ThemeDictionaries>
+    <ResourceDictionary x:Key="Light">
+      <SolidColorBrush x:Key="ChromeBackground">#EDEDF2</SolidColorBrush>
+      <SolidColorBrush x:Key="ToolbarBackground">#FBFBFD</SolidColorBrush>
+      <SolidColorBrush x:Key="ToolbarBorder">#E2E2E8</SolidColorBrush>
+      <SolidColorBrush x:Key="TabRestBackground">#00E1E1E8</SolidColorBrush>
+      <SolidColorBrush x:Key="TabHoverBackground">#E1E1E8</SolidColorBrush>
+      <SolidColorBrush x:Key="ButtonRestBackground">#00E4E4EA</SolidColorBrush>
+      <SolidColorBrush x:Key="ButtonHoverBackground">#E4E4EA</SolidColorBrush>
+      <SolidColorBrush x:Key="ButtonPressedBackground">#D5D5DE</SolidColorBrush>
+      <SolidColorBrush x:Key="GlyphBrush">#6B6B76</SolidColorBrush>
+      <SolidColorBrush x:Key="AccentBrush">#3D7DFF</SolidColorBrush>
+    </ResourceDictionary>
+    <ResourceDictionary x:Key="Dark">
+      <SolidColorBrush x:Key="ChromeBackground">#101013</SolidColorBrush>
+      <SolidColorBrush x:Key="ToolbarBackground">#17171A</SolidColorBrush>
+      <SolidColorBrush x:Key="ToolbarBorder">#303038</SolidColorBrush>
+      <SolidColorBrush x:Key="TabRestBackground">#00232329</SolidColorBrush>
+      <SolidColorBrush x:Key="TabHoverBackground">#232329</SolidColorBrush>
+      <SolidColorBrush x:Key="ButtonRestBackground">#0026262C</SolidColorBrush>
+      <SolidColorBrush x:Key="ButtonHoverBackground">#26262C</SolidColorBrush>
+      <SolidColorBrush x:Key="ButtonPressedBackground">#31313A</SolidColorBrush>
+      <SolidColorBrush x:Key="GlyphBrush">#9A9AA5</SolidColorBrush>
+      <SolidColorBrush x:Key="AccentBrush">#6EA1FF</SolidColorBrush>
+    </ResourceDictionary>
+  </ResourceDictionary.ThemeDictionaries>
+
+</ResourceDictionary>

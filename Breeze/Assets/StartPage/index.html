@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="referrer" content="no-referrer" />
+  <title>Breeze</title>
+  <link rel="stylesheet" href="start.css" />
+</head>
+<body>
+  <main>
+    <h1 class="brand">Breeze</h1>
+
+    <form id="search" autocomplete="off">
+      <input id="query" type="text" placeholder="Search or enter address" aria-label="Search or enter address" autofocus />
+    </form>
+
+    <section aria-label="Shortcuts">
+      <ul id="shortcuts" class="shortcuts"></ul>
+    </section>
+  </main>
+
+  <dialog id="editor" class="dialog">
+    <form id="editor-form" method="dialog">
+      <h2 id="editor-title" class="dialog-title">Add shortcut</h2>
+
+      <label class="field">
+        <span>Name</span>
+        <input id="editor-name" type="text" maxlength="80" />
+      </label>
+
+      <label class="field">
+        <span>URL</span>
+        <input id="editor-url" type="text" spellcheck="false" />
+      </label>
+
+      <p id="editor-error" class="error" role="alert"></p>
+
+      <div class="dialog-actions">
+        <button type="button" class="button" id="editor-cancel">Cancel</button>
+        <button type="submit" class="button primary">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="confirm" class="dialog">
+    <h2 class="dialog-title">Delete shortcut</h2>
+    <p id="confirm-text" class="dialog-text"></p>
+    <div class="dialog-actions">
+      <button type="button" class="button" id="confirm-cancel">Cancel</button>
+      <button type="button" class="button danger" id="confirm-delete">Delete</button>
+    </div>
+  </dialog>
+
+  <div id="menu" class="menu" role="menu" hidden>
+    <button type="button" class="menu-item" id="menu-edit" role="menuitem">Edit</button>
+    <button type="button" class="menu-item" id="menu-delete" role="menuitem">Delete</button>
+  </div>
+
+  <script src="start.js"></script>
+</body>
+</html>

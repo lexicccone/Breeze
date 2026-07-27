@@ -1,0 +1,303 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Breeze.ViewModels"
+             x:Class="Breeze.Views.SettingsView"
+             x:DataType="vm:SettingsViewModel">
+
+  <UserControl.Styles>
+    <Style Selector="ListBox.nav">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+    </Style>
+
+    <Style Selector="ListBox.nav ListBoxItem">
+      <Setter Property="Height" Value="36" />
+      <Setter Property="MinHeight" Value="36" />
+      <Setter Property="Margin" Value="8,1" />
+      <Setter Property="Padding" Value="14,0" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="FontSize" Value="13" />
+    </Style>
+
+    <Style Selector="ListBox.nav ListBoxItem /template/ ContentPresenter">
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Background" Value="{DynamicResource ButtonRestBackground}" />
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.12" />
+        </Transitions>
+      </Setter>
+    </Style>
+
+    <Style Selector="ListBox.nav ListBoxItem:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource ButtonHoverBackground}" />
+    </Style>
+
+    <Style Selector="ListBox.nav ListBoxItem:selected /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource ToolbarBackground}" />
+    </Style>
+
+    <Style Selector="TextBlock.section">
+      <Setter Property="FontSize" Value="19" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Margin" Value="0,0,0,18" />
+    </Style>
+
+    <Style Selector="TextBlock.group">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="Margin" Value="0,14,0,8" />
+    </Style>
+
+    <Style Selector="TextBlock.hint">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Foreground" Value="{DynamicResource GlyphBrush}" />
+      <Setter Property="Margin" Value="0,4,0,0" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+
+    <Style Selector="StackPanel.page">
+      <Setter Property="Margin" Value="28,24,28,32" />
+      <Setter Property="MaxWidth" Value="620" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+    </Style>
+
+    <Style Selector="Button.action">
+      <Setter Property="MinWidth" Value="150" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Margin" Value="0,0,0,8" />
+    </Style>
+
+    <Style Selector="TextBox.field">
+      <Setter Property="Width" Value="360" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+      <Setter Property="CornerRadius" Value="8" />
+    </Style>
+  </UserControl.Styles>
+
+  <Panel Background="{DynamicResource ChromeBackground}">
+    <Grid ColumnDefinitions="196,*">
+
+      <Panel Grid.Column="0">
+        <!-- Selection indicator: slides to the chosen category instead of jumping. -->
+        <Border Width="3"
+                Height="20"
+                CornerRadius="2"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Top"
+                Background="{DynamicResource AccentBrush}"
+                Margin="{Binding IndicatorOffset}">
+          <Border.Transitions>
+            <Transitions>
+              <ThicknessTransition Property="Margin" Duration="0:0:0.18" Easing="CubicEaseOut" />
+            </Transitions>
+          </Border.Transitions>
+        </Border>
+
+        <ListBox Classes="nav"
+                 SelectedIndex="{Binding SelectedSection}"
+                 AutomationProperties.Name="Settings categories">
+          <ListBoxItem>
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <PathIcon Data="{StaticResource IconSettings}" Width="16" Height="16" />
+              <TextBlock Text="General" VerticalAlignment="Center" />
+            </StackPanel>
+          </ListBoxItem>
+          <ListBoxItem>
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <PathIcon Data="{StaticResource IconAppearance}" Width="16" Height="16" />
+              <TextBlock Text="Appearance" VerticalAlignment="Center" />
+            </StackPanel>
+          </ListBoxItem>
+          <ListBoxItem>
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <PathIcon Data="{StaticResource IconPrivacy}" Width="16" Height="16" />
+              <TextBlock Text="Privacy" VerticalAlignment="Center" />
+            </StackPanel>
+          </ListBoxItem>
+          <ListBoxItem>
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <PathIcon Data="{StaticResource IconDownload}" Width="16" Height="16" />
+              <TextBlock Text="Downloads" VerticalAlignment="Center" />
+            </StackPanel>
+          </ListBoxItem>
+          <ListBoxItem>
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <PathIcon Data="{StaticResource IconSearch}" Width="16" Height="16" />
+              <TextBlock Text="Search" VerticalAlignment="Center" />
+            </StackPanel>
+          </ListBoxItem>
+          <ListBoxItem>
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <PathIcon Data="{StaticResource IconInfo}" Width="16" Height="16" />
+              <TextBlock Text="About" VerticalAlignment="Center" />
+            </StackPanel>
+          </ListBoxItem>
+        </ListBox>
+      </Panel>
+
+      <Border Grid.Column="1"
+              BorderThickness="1,0,0,0"
+              BorderBrush="{DynamicResource ToolbarBorder}">
+        <Carousel SelectedIndex="{Binding SelectedSection}" PageTransition="{x:Null}">
+
+          <ScrollViewer>
+            <StackPanel Classes="page">
+              <TextBlock Classes="section" Text="General" />
+
+              <TextBlock Classes="group" Text="Startup page" />
+              <RadioButton GroupName="startup" Content="Breeze Home" IsChecked="{Binding StartupIsHome}" />
+              <RadioButton GroupName="startup" Content="Blank page" IsChecked="{Binding StartupIsBlank}" />
+              <RadioButton GroupName="startup" Content="Custom URL" IsChecked="{Binding StartupIsCustom}" />
+              <TextBox Classes="field"
+                       Margin="24,6,0,0"
+                       Watermark="example.com"
+                       Text="{Binding StartupUrl}"
+                       IsEnabled="{Binding StartupIsCustom}"
+                       AutomationProperties.Name="Custom startup URL" />
+
+              <TextBlock Classes="group" Text="Downloads" />
+              <TextBox Classes="field"
+                       Text="{Binding DownloadFolder}"
+                       AutomationProperties.Name="Default download location" />
+              <CheckBox Margin="0,10,0,0" Content="Ask where to save each file" IsChecked="{Binding AskWhereToSave}" />
+            </StackPanel>
+          </ScrollViewer>
+
+          <ScrollViewer>
+            <StackPanel Classes="page">
+              <TextBlock Classes="section" Text="Appearance" />
+
+              <TextBlock Classes="group" Text="Theme" />
+              <RadioButton GroupName="theme" Content="System" IsChecked="{Binding ThemeIsSystem}" />
+              <RadioButton GroupName="theme" Content="Light" IsChecked="{Binding ThemeIsLight}" />
+              <RadioButton GroupName="theme" Content="Dark" IsChecked="{Binding ThemeIsDark}" />
+              <TextBlock Classes="hint" Text="Applies to Breeze and to sites that support dark mode." />
+
+              <TextBlock Classes="group" Text="UI scale" />
+              <Slider Width="300"
+                      HorizontalAlignment="Left"
+                      Minimum="0.8"
+                      Maximum="1.5"
+                      TickFrequency="0.1"
+                      IsSnapToTickEnabled="True"
+                      Value="{Binding UiScale, Mode=OneWay}"
+                      IsEnabled="False"
+                      AutomationProperties.Name="UI scale" />
+              <TextBlock Classes="hint" Text="Not available yet." />
+
+              <TextBlock Classes="group" Text="Compact mode" />
+              <ToggleSwitch IsChecked="{Binding CompactMode, Mode=OneWay}"
+                            IsEnabled="False"
+                            OffContent="Off"
+                            OnContent="On" />
+              <TextBlock Classes="hint" Text="Not available yet." />
+            </StackPanel>
+          </ScrollViewer>
+
+          <ScrollViewer>
+            <StackPanel Classes="page">
+              <TextBlock Classes="section" Text="Privacy" />
+              <TextBlock Classes="hint"
+                         Margin="0,0,0,16"
+                         Text="Breeze keeps browsing data on this device only. Nothing is uploaded anywhere." />
+
+              <Button Classes="action" Content="Clear browsing history" Command="{Binding ClearHistoryCommand}" />
+              <Button Classes="action" Content="Clear cookies" Command="{Binding ClearCookiesCommand}" />
+              <Button Classes="action" Content="Clear cache" Command="{Binding ClearCacheCommand}" />
+
+              <TextBlock Classes="hint" Text="{Binding PrivacyStatus}" />
+            </StackPanel>
+          </ScrollViewer>
+
+          <ScrollViewer>
+            <StackPanel Classes="page">
+              <TextBlock Classes="section" Text="Downloads" />
+
+              <TextBlock Classes="group" Text="Default folder" />
+              <TextBox Classes="field"
+                       Text="{Binding DownloadFolder}"
+                       AutomationProperties.Name="Default download folder" />
+              <Button Classes="action"
+                      Margin="0,10,0,0"
+                      Content="Open download folder"
+                      Command="{Binding OpenDownloadFolderCommand}" />
+
+              <TextBlock Classes="group" Text="Before downloading" />
+              <CheckBox Content="Ask where to save each file" IsChecked="{Binding AskWhereToSave}" />
+            </StackPanel>
+          </ScrollViewer>
+
+          <ScrollViewer>
+            <StackPanel Classes="page">
+              <TextBlock Classes="section" Text="Search" />
+
+              <TextBlock Classes="group" Text="Default search engine" />
+              <ComboBox Width="240"
+                        HorizontalAlignment="Left"
+                        CornerRadius="8"
+                        ItemsSource="{Binding SearchEngines}"
+                        SelectedItem="{Binding SelectedSearchEngine}"
+                        AutomationProperties.Name="Default search engine">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate>
+                    <TextBlock Text="{Binding Name}" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+              <TextBlock Classes="hint" Text="Used by the address bar and the Breeze start page." />
+            </StackPanel>
+          </ScrollViewer>
+
+          <ScrollViewer>
+            <StackPanel Classes="page">
+              <TextBlock Classes="section" Text="About" />
+
+              <TextBlock Text="Breeze" FontSize="34" FontWeight="Light" />
+              <TextBlock Classes="hint" Text="A lightweight, privacy focused browser for Windows." />
+
+              <TextBlock Classes="group" Text="Versions" />
+              <Grid ColumnDefinitions="150,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="6">
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Breeze" />
+                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Version}" />
+                <TextBlock Grid.Row="1" Grid.Column="0" Text=".NET runtime" />
+                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding RuntimeVersion}" />
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="WebView2 runtime" />
+                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding WebViewVersion}" />
+              </Grid>
+
+              <TextBlock Classes="group" Text="More" />
+              <Button Classes="action" Content="Check for updates" IsEnabled="False" />
+              <Button Classes="action" Content="Project website" IsEnabled="False" />
+              <TextBlock Classes="hint" Text="Not available yet." />
+            </StackPanel>
+          </ScrollViewer>
+
+        </Carousel>
+      </Border>
+
+    </Grid>
+
+    <Border IsVisible="{Binding IsConfirmOpen}" Background="#66000000">
+      <Border Width="380"
+              Padding="20"
+              CornerRadius="14"
+              VerticalAlignment="Center"
+              HorizontalAlignment="Center"
+              BorderThickness="1"
+              BorderBrush="{DynamicResource ToolbarBorder}"
+              Background="{DynamicResource ToolbarBackground}">
+        <StackPanel Spacing="18">
+          <TextBlock Text="{Binding ConfirmMessage}" TextWrapping="Wrap" />
+          <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+            <Button Content="Cancel" CornerRadius="8" Command="{Binding CancelCommand}" />
+            <Button Content="Clear" CornerRadius="8" Command="{Binding ConfirmCommand}" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Border>
+  </Panel>
+
+</UserControl>

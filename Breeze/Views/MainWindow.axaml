@@ -1,0 +1,309 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:chrome="using:Avalonia.Controls.Chrome"
+        xmlns:controls="using:Breeze.Controls"
+        xmlns:vm="using:Breeze.ViewModels"
+        xmlns:views="using:Breeze.Views"
+        x:Class="Breeze.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="Breeze"
+        Width="1200"
+        Height="800"
+        WindowStartupLocation="CenterScreen"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="PreferSystemChrome"
+        ExtendClientAreaTitleBarHeightHint="-1">
+
+  <Window.Styles>
+    <Style Selector="Button.tool">
+      <Setter Property="Width" Value="32" />
+      <Setter Property="Height" Value="32" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+
+    <Style Selector="Button.close">
+      <Setter Property="Width" Value="20" />
+      <Setter Property="Height" Value="20" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+
+    <!-- One state model for every icon button: transparent at rest, subtle hover and
+         pressed fills, and a dimmed icon rather than a grey plate when disabled. -->
+    <Style Selector="Button.tool /template/ ContentPresenter, Button.close /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource ButtonRestBackground}" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.12" />
+        </Transitions>
+      </Setter>
+    </Style>
+
+    <Style Selector="Button.tool:pointerover /template/ ContentPresenter, Button.close:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource ButtonHoverBackground}" />
+    </Style>
+
+    <Style Selector="Button.tool:pressed /template/ ContentPresenter, Button.close:pressed /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource ButtonPressedBackground}" />
+    </Style>
+
+    <Style Selector="Button.tool:disabled /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource ButtonRestBackground}" />
+    </Style>
+
+    <Style Selector="Button.tool:disabled PathIcon">
+      <Setter Property="Opacity" Value="0.35" />
+    </Style>
+
+    <Style Selector="Button.tool PathIcon">
+      <Setter Property="Width" Value="17" />
+      <Setter Property="Height" Value="17" />
+    </Style>
+
+    <Style Selector="Button.close PathIcon">
+      <Setter Property="Width" Value="11" />
+      <Setter Property="Height" Value="11" />
+    </Style>
+
+    <!-- The window's own title bar layer sits in the off screen frame when maximized, which
+         clipped the caption buttons; inset it by the same margin as the content. -->
+    <Style Selector="chrome|TitleBar">
+      <Setter Property="Margin" Value="{Binding $parent[Window].OffScreenMargin}" />
+    </Style>
+
+    <!-- Padding lives in styles, not on the elements, so the maximized rules below can win. -->
+    <Style Selector="Border.toolbar">
+      <Setter Property="Padding" Value="8,6" />
+    </Style>
+
+    <Style Selector="controls|DragArea.chrome">
+      <Setter Property="Padding" Value="6,5,128,0" />
+    </Style>
+
+    <!-- Maximized and fullscreen windows sit flush against the display edges, so the
+         chrome gains a small safe area. Windowed spacing is untouched. -->
+    <Style Selector="Window[WindowState=Maximized] Border.toolbar, Window[WindowState=FullScreen] Border.toolbar">
+      <Setter Property="Padding" Value="16,6" />
+    </Style>
+
+    <Style Selector="Window[WindowState=Maximized] controls|DragArea.chrome, Window[WindowState=FullScreen] controls|DragArea.chrome">
+      <Setter Property="Padding" Value="14,5,128,0" />
+    </Style>
+
+    <Style Selector="TextBox.address">
+      <Setter Property="CornerRadius" Value="16" />
+      <Setter Property="MinHeight" Value="32" />
+      <Setter Property="Padding" Value="14,0" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+
+    <Style Selector="ListBox.tabs">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+    </Style>
+
+    <Style Selector="ListBox.tabs ListBoxItem">
+      <Setter Property="Height" Value="32" />
+      <Setter Property="MinHeight" Value="32" />
+      <Setter Property="Margin" Value="0,0,2,0" />
+      <Setter Property="Padding" Value="10,0" />
+      <Setter Property="CornerRadius" Value="8" />
+    </Style>
+
+    <Style Selector="ListBox.tabs ListBoxItem /template/ ContentPresenter">
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Background" Value="{DynamicResource TabRestBackground}" />
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.12" />
+        </Transitions>
+      </Setter>
+    </Style>
+
+    <Style Selector="ListBox.tabs ListBoxItem:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource TabHoverBackground}" />
+    </Style>
+
+    <Style Selector="ListBox.tabs ListBoxItem:selected /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource ToolbarBackground}" />
+    </Style>
+
+    <Style Selector="ListBox.tabs ListBoxItem:pointerover Button.close">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+
+    <Style Selector="ListBox.tabs ListBoxItem:selected Button.close">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+  </Window.Styles>
+
+  <!-- When maximized Windows pushes part of the window off screen; inset the content by that
+       amount so the title bar row stays fully visible. -->
+  <DockPanel Margin="{Binding $parent[Window].OffScreenMargin}">
+
+    <controls:DragArea DockPanel.Dock="Top"
+                       Classes="chrome"
+                       Background="{DynamicResource ChromeBackground}">
+      <DockPanel LastChildFill="False">
+        <controls:TabStrip DockPanel.Dock="Left"
+                           Classes="tabs"
+                           Reserve="32"
+                           ItemsSource="{Binding Tabs}"
+                           SelectedItem="{Binding SelectedTab}"
+                           ScrollViewer.HorizontalScrollBarVisibility="Hidden"
+                           ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                           AutomationProperties.Name="Tabs">
+          <ListBox.ItemsPanel>
+            <ItemsPanelTemplate>
+              <StackPanel Orientation="Horizontal" />
+            </ItemsPanelTemplate>
+          </ListBox.ItemsPanel>
+          <ListBox.ItemTemplate>
+            <DataTemplate DataType="vm:TabViewModel">
+              <Grid ColumnDefinitions="16,*,20" ColumnSpacing="8">
+                <Panel Grid.Column="0" Width="16" Height="16">
+                  <Image Source="{Binding Favicon}" IsVisible="{Binding HasFavicon}" Width="16" Height="16" />
+                  <PathIcon Data="{StaticResource IconGlobe}"
+                            Foreground="{DynamicResource GlyphBrush}"
+                            IsVisible="{Binding ShowGlobe}"
+                            Width="14"
+                            Height="14" />
+                  <PathIcon Data="{StaticResource IconSettings}"
+                            Foreground="{DynamicResource GlyphBrush}"
+                            IsVisible="{Binding !IsWebPage}"
+                            Width="14"
+                            Height="14" />
+                </Panel>
+                <TextBlock Grid.Column="1"
+                           Text="{Binding Title}"
+                           FontSize="12"
+                           VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" />
+                <Button Grid.Column="2"
+                        Classes="close"
+                        Command="{Binding CloseCommand}"
+                        ToolTip.Tip="Close tab"
+                        AutomationProperties.Name="Close tab">
+                  <PathIcon Data="{StaticResource IconDismiss}" />
+                </Button>
+              </Grid>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </controls:TabStrip>
+
+        <Button DockPanel.Dock="Left"
+                Classes="tool"
+                Width="28"
+                Height="28"
+                Margin="2,0,0,0"
+                VerticalAlignment="Center"
+                Command="{Binding NewTabCommand}"
+                ToolTip.Tip="New tab"
+                AutomationProperties.Name="New tab">
+          <PathIcon Data="{StaticResource IconAdd}" Width="15" Height="15" />
+        </Button>
+      </DockPanel>
+    </controls:DragArea>
+
+    <Border DockPanel.Dock="Top"
+            Classes="toolbar"
+            Background="{DynamicResource ToolbarBackground}"
+            BorderBrush="{DynamicResource ToolbarBorder}"
+            BorderThickness="0,0,0,1">
+      <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto" ColumnSpacing="4">
+
+        <Button Grid.Column="0"
+                Classes="tool"
+                Command="{Binding SelectedTab.BackCommand}"
+                IsEnabled="{Binding SelectedTab.CanGoBack}"
+                ToolTip.Tip="Back"
+                AutomationProperties.Name="Back">
+          <PathIcon Data="{StaticResource IconArrowLeft}" />
+        </Button>
+
+        <Button Grid.Column="1"
+                Classes="tool"
+                Command="{Binding SelectedTab.ForwardCommand}"
+                IsEnabled="{Binding SelectedTab.CanGoForward}"
+                ToolTip.Tip="Forward"
+                AutomationProperties.Name="Forward">
+          <PathIcon Data="{StaticResource IconArrowRight}" />
+        </Button>
+
+        <Panel Grid.Column="2">
+          <Button Classes="tool"
+                  IsVisible="{Binding !SelectedTab.IsLoading}"
+                  IsEnabled="{Binding SelectedTab.IsWebPage}"
+                  Command="{Binding SelectedTab.ReloadCommand}"
+                  ToolTip.Tip="Reload"
+                  AutomationProperties.Name="Reload">
+            <PathIcon Data="{StaticResource IconArrowClockwise}" />
+          </Button>
+
+          <Button Classes="tool"
+                  IsVisible="{Binding SelectedTab.IsLoading}"
+                  Command="{Binding SelectedTab.StopCommand}"
+                  ToolTip.Tip="Stop"
+                  AutomationProperties.Name="Stop">
+            <PathIcon Data="{StaticResource IconDismiss}" Width="15" Height="15" />
+          </Button>
+        </Panel>
+
+        <controls:AddressBox Grid.Column="3"
+                             Classes="address"
+                             Text="{Binding SelectedTab.AddressText}"
+                             IsEnabled="{Binding SelectedTab.IsWebPage}"
+                             Watermark="Search or enter address"
+                             AutomationProperties.Name="Address and search bar">
+          <controls:AddressBox.KeyBindings>
+            <KeyBinding Gesture="Enter" Command="{Binding SelectedTab.SubmitCommand}" />
+          </controls:AddressBox.KeyBindings>
+        </controls:AddressBox>
+
+        <Button Grid.Column="4"
+                Classes="tool"
+                Command="{Binding SettingsCommand}"
+                ToolTip.Tip="Settings"
+                AutomationProperties.Name="Settings">
+          <PathIcon Data="{StaticResource IconSettings}" />
+        </Button>
+
+      </Grid>
+    </Border>
+
+    <ItemsControl ItemsSource="{Binding HostedTabs}">
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate>
+          <Panel />
+        </ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
+      <ItemsControl.DataTemplates>
+        <!-- The settings tab is a native view, so it never creates a WebView2 instance. -->
+        <DataTemplate DataType="vm:SettingsTabViewModel">
+          <Panel IsVisible="{Binding IsSelected}">
+            <views:SettingsView DataContext="{Binding Settings}" />
+          </Panel>
+        </DataTemplate>
+        <DataTemplate DataType="vm:TabViewModel">
+          <controls:WebView Source="{Binding Address, Mode=TwoWay}"
+                            DocumentTitle="{Binding DocumentTitle, Mode=TwoWay}"
+                            Favicon="{Binding Favicon, Mode=TwoWay}"
+                            CanGoBack="{Binding CanGoBack, Mode=TwoWay}"
+                            CanGoForward="{Binding CanGoForward, Mode=TwoWay}"
+                            IsLoading="{Binding IsLoading, Mode=TwoWay}"
+                            IsVisible="{Binding IsSelected}" />
+        </DataTemplate>
+      </ItemsControl.DataTemplates>
+    </ItemsControl>
+
+  </DockPanel>
+
+</Window>

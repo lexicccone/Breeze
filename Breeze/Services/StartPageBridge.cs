@@ -1,0 +1,72 @@
+using System.Text.Json;
+using Microsoft.Web.WebView2.Core;
+
+namespace Breeze.Services;
+
+/// <summary>Message bridge between the bundled start page and the shortcut store.
+/// Messages from any other origin are ignored.</summary>
+public static class StartPageBridge
+{
+    private static readonly JsonSerializerOptions Options = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+
+    public static void Attach(CoreWebView2 webView) =>
+        webView.WebMessageReceived += async (_, e) =>
+        {
+            if (!StartPage.IsStartPage(e.Source))
+            {
+                return;
+            }
+
+            try
+            {
+                await HandleAsync(webView, e.WebMessageAsJson);
+            }
+            catch (JsonException)
+            {
+                // Malformed message from the page: nothing to do.
+            }
+        };
+
+    private static async Task HandleAsync(CoreWebView2 webView, string json)
+    {
+        using var document = JsonDocument.Parse(json);
+        var message = document.RootElement;
+
+        if (message.ValueKind != JsonValueKind.Object ||
+            !message.TryGetProperty("type", out var type))
+        {
+            return;
+        }
+
+        switch (type.GetString())
+        {
+            case "list":
+                break;
+            case "save":
+                await ShortcutStore.SaveAsync(Number(message, "index"), Text(message, "name"), Text(message, "url"));
+                break;
+            case "delete":
+                ShortcutStore.Remove(Number(message, "index"));
+                break;
+            case "move":
+                ShortcutStore.Move(Number(message, "from"), Number(message, "to"));
+                break;
+            default:
+                return;
+        }
+
+        Publish(webView);
+    }
+
+    private static void Publish(CoreWebView2 webView) =>
+        webView.PostWebMessageAsJson(JsonSerializer.Serialize(
+            new { type = "shortcuts", items = ShortcutStore.Items, searchUrl = SearchEngines.Current.QueryUrl }, Options));
+
+    private static string Text(JsonElement message, string name) =>
+        message.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
+            ? value.GetString() ?? string.Empty
+            : string.Empty;
+
+    private static int Number(JsonElement message, string name) =>
+        message.TryGetProperty(name, out var value) && value.TryGetInt32(out var number) ? number : -1;
+}
