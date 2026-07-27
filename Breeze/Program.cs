@@ -1,5 +1,4 @@
 using Avalonia;
-using Avalonia.Threading;
 using Breeze.Services;
 
 namespace Breeze;
@@ -17,16 +16,11 @@ internal static class Program
     public static AppBuilder BuildAvaloniaApp() =>
         AppBuilder.Configure<App>().UsePlatformDetect();
 
-    /// <summary>Last resort handlers so a single failed operation cannot take the browser,
-    /// and every open tab, down with it.</summary>
+    /// <summary>Last resort logging for failures that escape their own guards. Avalonia's Win32
+    /// dispatcher does not support handling exceptions in the main loop, so UI thread work is
+    /// guarded where it starts instead: see RelayCommand.</summary>
     private static void GuardAgainstCrashes()
     {
-        Dispatcher.UIThread.UnhandledException += (_, e) =>
-        {
-            ErrorLog.Write("ui", e.Exception);
-            e.Handled = true;
-        };
-
         TaskScheduler.UnobservedTaskException += (_, e) =>
         {
             ErrorLog.Write("task", e.Exception);
