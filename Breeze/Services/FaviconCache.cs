@@ -75,6 +75,42 @@ public static partial class FaviconCache
     public static bool IsCached(string? fileName) =>
         !string.IsNullOrEmpty(fileName) && File.Exists(Path.Combine(AppPaths.Favicons, fileName));
 
+    /// <summary>Deletes cached icons that no shortcut refers to any more. A file that is still
+    /// referenced is always kept, and a failed delete is ignored.</summary>
+    public static void Prune(IEnumerable<string> referenced)
+    {
+        try
+        {
+            if (!Directory.Exists(AppPaths.Favicons))
+            {
+                return;
+            }
+
+            var keep = new HashSet<string>(referenced, StringComparer.OrdinalIgnoreCase);
+
+            foreach (var file in Directory.EnumerateFiles(AppPaths.Favicons))
+            {
+                if (keep.Contains(Path.GetFileName(file)))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    File.Delete(file);
+                }
+                catch (Exception)
+                {
+                    // In use or locked: leave it for the next prune.
+                }
+            }
+        }
+        catch (Exception error)
+        {
+            ErrorLog.Write("favicon.prune", error);
+        }
+    }
+
     private static string? Find(string host)
     {
         if (!Directory.Exists(AppPaths.Favicons))

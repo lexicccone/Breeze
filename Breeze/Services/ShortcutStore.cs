@@ -129,6 +129,7 @@ public static class ShortcutStore
     {
         Revision++;
         Persist(items);
+        FaviconCache.Prune(items.Select(item => item.Icon).OfType<string>());
     }
 
     private static List<Shortcut> Load()
