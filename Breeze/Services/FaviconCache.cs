@@ -1,4 +1,6 @@
+using System.Net;
 using System.Net.Http;
+using System.Net.Sockets;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -13,6 +15,8 @@ public static partial class FaviconCache
     private const int MaxHtmlBytes = 512 * 1024;
 
     private const int RegexTimeoutMilliseconds = 1000;
+
+    private const int MaxRedirects = 5;
 
     /// <summary>Assumed edge length for icons that do not declare a size.</summary>
     private const int VectorScore = 1000;
@@ -66,9 +70,120 @@ public static partial class FaviconCache
 
     private static HttpClient CreateClient()
     {
-        var client = new HttpClient { Timeout = TimeSpan.FromSeconds(8) };
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("Breeze");
+        // Redirects are followed by hand so every hop can be validated before it is requested.
+        var handler = new SocketsHttpHandler
+        {
+            AllowAutoRedirect = false,
+            ConnectTimeout = TimeSpan.FromSeconds(5)
+        };
+
+        var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(8) };
+        client.DefaultRequestHeaders.UserAgent.ParseAdd(AppIdentity.UserAgent);
         return client;
+    }
+
+    /// <summary>Requests a URL, validating it and every redirect target. A blocked destination
+    /// ends the attempt: the caller falls back to the next candidate or the default globe icon.</summary>
+    private static async Task<HttpResponseMessage?> FetchAsync(Uri url)
+    {
+        var target = url;
+
+        for (var hop = 0; hop <= MaxRedirects; hop++)
+        {
+            if (!await IsAllowedAsync(target))
+            {
+                ErrorLog.Write("favicon.blocked", new InvalidOperationException(target.GetLeftPart(UriPartial.Authority)));
+                return null;
+            }
+
+            var response = await Client.GetAsync(target, HttpCompletionOption.ResponseHeadersRead);
+
+            if (!IsRedirect(response.StatusCode) || response.Headers.Location is null)
+            {
+                return response;
+            }
+
+            var next = new Uri(target, response.Headers.Location);
+            response.Dispose();
+            target = next;
+        }
+
+        return null;
+    }
+
+    private static bool IsRedirect(HttpStatusCode status) =>
+        status is HttpStatusCode.MovedPermanently or HttpStatusCode.Found or HttpStatusCode.SeeOther
+            or HttpStatusCode.TemporaryRedirect or HttpStatusCode.PermanentRedirect;
+
+    /// <summary>A favicon may only be fetched over http or https from a public address. Host names
+    /// are resolved and every address they map to must be public, so a site cannot point Breeze at
+    /// a machine on the user's own network.</summary>
+    private static async Task<bool> IsAllowedAsync(Uri url)
+    {
+        if (url.Scheme is not ("http" or "https"))
+        {
+            return false;
+        }
+
+        if (IPAddress.TryParse(url.DnsSafeHost, out var literal))
+        {
+            return !IsBlocked(literal);
+        }
+
+        var host = url.DnsSafeHost;
+        if (host.Length == 0 ||
+            host.Equals("localhost", StringComparison.OrdinalIgnoreCase) ||
+            host.EndsWith(".localhost", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        try
+        {
+            var addresses = await Dns.GetHostAddressesAsync(host);
+            return addresses.Length > 0 && addresses.All(address => !IsBlocked(address));
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
+    private static bool IsBlocked(IPAddress address)
+    {
+        if (address.IsIPv4MappedToIPv6)
+        {
+            return IsBlocked(address.MapToIPv4());
+        }
+
+        if (IPAddress.IsLoopback(address) ||
+            address.Equals(IPAddress.Any) ||
+            address.Equals(IPAddress.IPv6Any))
+        {
+            return true;
+        }
+
+        if (address.AddressFamily == AddressFamily.InterNetworkV6)
+        {
+            return address.IsIPv6LinkLocal || address.IsIPv6SiteLocal ||
+                   address.IsIPv6UniqueLocal || address.IsIPv6Multicast;
+        }
+
+        var octets = address.GetAddressBytes();
+
+        return octets[0] switch
+        {
+            0 => true,                                              // 0.0.0.0/8 unspecified
+            10 => true,                                             // 10.0.0.0/8 private
+            127 => true,                                            // loopback
+            100 => octets[1] is >= 64 and <= 127,                   // 100.64.0.0/10 carrier grade NAT
+            169 => octets[1] == 254,                                // 169.254.0.0/16 link local
+            172 => octets[1] is >= 16 and <= 31,                    // 172.16.0.0/12 private
+            192 => octets[1] == 168 || (octets[1] == 0 && octets[2] == 0), // 192.168/16 and 192.0.0/24
+            198 => octets[1] is 18 or 19,                           // 198.18.0.0/15 benchmarking
+            >= 224 => true,                                         // multicast, reserved, broadcast
+            _ => false
+        };
     }
 
     /// <summary>True when the named icon is still present in the cache folder.</summary>
@@ -220,7 +335,12 @@ public static partial class FaviconCache
     {
         try
         {
-            using var response = await Client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+            using var response = await FetchAsync(url);
+            if (response is null)
+            {
+                return null;
+            }
+
             var contentType = response.Content.Headers.ContentType?.MediaType;
 
             if (!response.IsSuccessStatusCode ||
@@ -245,7 +365,12 @@ public static partial class FaviconCache
     {
         try
         {
-            using var response = await Client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+            using var response = await FetchAsync(url);
+            if (response is null)
+            {
+                return null;
+            }
+
             var contentType = response.Content.Headers.ContentType?.MediaType;
 
             if (!response.IsSuccessStatusCode ||
