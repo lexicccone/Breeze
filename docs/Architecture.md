@@ -10,13 +10,16 @@ Avalonia and WebView2.
 ```
 Program.cs            entry point: shell identity, crash guards, AppBuilder
 App.axaml(.cs)        Fluent theme, merged resource dictionaries, creates the window and model
-Assets/               Palette.axaml, Icons.axaml, CaptionButtons.axaml, StartPage/ (bundled HTML)
+Assets/               Palette.axaml, Icons.axaml, CaptionButtons.axaml, Brand/ (logo and icon),
+                      StartPage/ (bundled HTML)
 Controls/             native interop and input: WebView, TabStrip, AddressBox, DragArea, MiddleClick
 Models/               data and the interfaces that cross the view/view model boundary
 Services/             process wide, UI agnostic concerns; static classes with cached state
-Utilities/            RelayCommand
-ViewModels/           MainWindowViewModel, TabViewModel, SettingsTabViewModel, SettingsViewModel
+Utilities/            RelayCommand, KeyboardState, WindowIcons
+ViewModels/           MainWindowViewModel, TabViewModel, SettingsTabViewModel, SettingsViewModel,
+                      BookmarkViewModel, ShortcutRowViewModel
 Views/                MainWindow, SettingsView
+tools/                build-brand.ps1, regenerates the logo bitmap and icon from the vector master
 ```
 
 **How the layers talk.** Avalonia's visual tree holds the chrome. `Controls/WebView` is a
@@ -37,7 +40,8 @@ Two directions to keep straight:
   `ITabReorder` on its `DataContext`.
 
 **Services** are static with lazily cached state, deliberately: there is one browser process, one
-settings file, one shortcut file, so a container would add ceremony without adding anything.
+settings file, one shortcut file and one bookmark file, so a container would add ceremony without
+adding anything.
 Every service that touches the disk or the network guards its own failures and reports through
 `Services/ErrorLog` (local, size capped). `Utilities/RelayCommand` also catches and logs, because
 Avalonia's Win32 dispatcher does not support a main loop exception handler — an exception escaping
@@ -98,17 +102,26 @@ strip items.
 **WebView ownership.** The content host is an `ItemsControl` over `HostedTabs` with an overlay
 `Panel` and two `DataTemplates` selected by view model type: `SettingsTabViewModel` renders
 `SettingsView`, `TabViewModel` renders `WebView`. A settings tab therefore never creates a
-WebView2 instance. Each `WebView` owns exactly one `CoreWebView2Controller` and the favicon
-`Bitmap` it decodes.
+WebView2 instance. Each `WebView` owns exactly one `CoreWebView2Controller`; favicon bitmaps are
+not owned by the view, see below.
 
 **Lifetime.** Selection drives `IsSelected`, bound to the `WebView`'s `IsVisible`. Avalonia *hides*
 the native child window rather than destroying it, so background tabs keep their engine, history
 and page state; the controller's own `IsVisible` is gated on `_painted && IsVisible`, which both
 suspends rendering for background tabs and keeps a new tab hidden until its first
 `DOMContentLoaded` (no white flash). Closing a tab removes it from both collections, which detaches
-the container, which calls `DestroyNativeControlCore`: the controller is closed, the favicon bitmap
-is released after the bindings have moved on. Closing the last tab raises `CloseRequested`, which
-`App` wires to `Window.Close()`.
+the container, which calls `DestroyNativeControlCore`: the controller is closed and the view drops
+its favicon reference. Closing the last tab raises `CloseRequested`, which `App` wires to
+`Window.Close()`.
+
+**Favicons.** A tab shows the icon the engine already fetched for the page, so nothing is
+downloaded for it. `CoreWebView2.GetFaviconAsync` hands over a forward only stream, which the
+bitmap decoder cannot read from, so `Services/FaviconImages` buffers the bytes before decoding and
+keeps the result keyed by favicon URL. The same site in several tabs therefore shares one bitmap
+and is never asked of the engine twice; a failure is cached as a failure, and the tab falls back to
+the globe glyph. Because those bitmaps are shared, nothing disposes them — dropping the reference
+is enough. `FaviconImages` also serves the icons on disk, keyed by file name, for the bookmark bar
+and the homepage.
 
 **Navigation routing.** Toolbar buttons bind to commands on `SelectedTab`. `TabViewModel` forwards
 them to its attached `IWebNavigator`, which is the `WebView`, which calls the engine. The address
@@ -130,11 +143,17 @@ added without a migration.
 
 **Propagation.** `SettingsViewModel` property setters mutate the settings object, call
 `SettingsStore.Save()` immediately, and raise `PropertyChanged`. There is no change notification
-service; consumers read `SettingsStore.Current` when they need a value.
+service; consumers read `SettingsStore.Current` when they need a value. The two settings the chrome
+must react to at once are pushed instead of observed: the settings page takes an optional callback
+from its tab and invokes it after saving, and the bookmark bar shortcut calls back into the open
+settings page the same way. A static settings event was avoided deliberately, since it would keep
+every settings page that has ever been opened alive.
 
 | Setting | When it takes effect |
 |---|---|
 | Theme | Immediately, through `Theming.Apply` |
+| Show bookmark bar | Immediately: the settings page reports back through a callback given to `SettingsTabViewModel`, and `MainWindowViewModel` raises `IsBookmarkBarVisible` |
+| Show Breeze logo on homepage | Immediately: `StartPageBridge.Refresh()` republishes settings to every open homepage |
 | Search engine | Immediately: `UrlResolver` reads it per resolution, and the start page receives it in the next bridge publish |
 | Download folder | Immediately: read by `Downloads.Resolve` at download time |
 | Ask where to save | Persisted only; the control is disabled until a save dialog exists |
@@ -155,12 +174,15 @@ Mutations run under a `SemaphoreSlim` so two open homepages cannot interleave a 
 fetch and a write. Each accepted change increments a `Revision`; the page echoes the revision it
 last rendered with every change, and a stale revision is refused and the page refreshed, which
 prevents an edit or delete landing on the wrong index. Favicons are discovered and cached by
-`Services/FaviconCache`, and files no shortcut references are pruned after each change.
+`Services/FaviconCache`, and files no store references are pruned after each change.
 
 **Bridge.** The page calls `window.chrome.webview.postMessage` with `{ type, revision, ... }`;
 `Services/StartPageBridge` handles `list`, `save`, `delete` and `move`, then publishes
-`{ type: "shortcuts", items, revision, searchUrl }` back with `PostWebMessageAsJson`. Every failure
-is caught, because the handler is `async void`.
+`{ type: "shortcuts", items, revision, searchUrl, showLogo }` back with `PostWebMessageAsJson`.
+Every failure is caught, because the handler is `async void`. The bridge also keeps the engines it
+is attached to, so `Refresh()` can republish to the homepages that are open when a setting changes;
+an engine whose tab has closed throws on first touch and is dropped, which is the only signal
+WebView2 offers.
 
 **Why only the homepage may talk to the host.** The bridge writes files and issues outbound HTTP
 requests on the user's behalf, so it is privileged. Two independent gates:
@@ -169,6 +191,62 @@ requests on the user's behalf, so it is privileged. Two independent gates:
    loaded, so remote pages cannot post at all.
 2. `StartPageBridge` compares the message source against the homepage origin by parsed scheme,
    host and port — not a string prefix.
+
+## Bookmarks
+
+`Services/BookmarkStore` keeps `bookmarks.json` (title, url, icon file name) with the same shape as
+the shortcut store: one cached list, mutations serialized behind a `SemaphoreSlim`, atomic writes,
+and a file that tolerates missing or unknown fields. Storage and validation the two stores have in
+common live in `Services/WebLinks`: the JSON options, the `http`/`https` URL check, the plain file
+name check for icon references, and the read and write helpers.
+
+**Icon pruning.** `FaviconCache` no longer takes the list of icons still in use from its caller.
+Every store that references icons registers a source through `Track` at startup, and `Prune`
+deletes only what no registered source claims. Both stores prune after each change, so a bookmark
+and a shortcut for the same site cannot delete each other's icon.
+
+**View side.** `MainWindowViewModel` rebuilds an `ObservableCollection<BookmarkViewModel>` on the
+store's `Changed` event, marshalled to the UI thread. `IsCurrentPageBookmarked` and `CanBookmark`
+are recomputed when the selected tab changes, when its `Address` changes, and when the store
+changes; `CanBookmark` excludes internal pages, blank tabs and the settings tab. The bar is an
+`ItemsControl` over a horizontal `VirtualizingStackPanel` inside a `ScrollViewer`, so a long list
+costs only the entries on screen.
+
+**Bar visibility.** Two rules, derived from the bookmark count and the stored setting rather than
+extra state: going from no bookmarks to one turns the bar on, and removing the last one turns it
+off. In between the setting belongs to the user, so a bar they hid stays hidden.
+
+## Keyboard shortcuts
+
+`Services/KeyboardShortcuts` is the only place a gesture is written down. It holds the catalog of
+`ShortcutDefinition` (id, label, default gesture), resolves the gesture in force — a parsed override
+from `settings.json`, otherwise the default, otherwise nothing — caches the result so no parsing
+happens while keys are pressed, and maps a key press to the registered handler. Adding a shortcut
+means adding a definition and registering an action.
+
+Key presses reach Breeze from two places and both resolve through that one lookup:
+
+- **Chrome focused.** `MainWindow.OnKeyDown`.
+- **Page focused.** The engine owns the keyboard, so `WebView` handles the controller's
+  `AcceleratorKeyPressed`, translates the virtual key and the live modifier state through
+  `Utilities/KeyboardState` (the event carries neither in Avalonia's terms), and posts the action to
+  the next dispatcher turn. That event is synchronous and blocks the browser process until it
+  returns, so the action must not run inside the callback.
+
+## Branding assets
+
+`Assets/Brand/logo.svg` is the master artwork. `logo.png` and `breeze.ico` are generated from it by
+`tools/build-brand.ps1`, which renders the vector with headless Edge, so no extra tooling is needed.
+The homepage loads the SVG directly; the native views draw the bitmap, since Avalonia has no SVG
+support without another package.
+
+The icon file carries nine sizes. 16, 20 and 24 px come from a simplified variant of the artwork,
+with sub pixel detail dropped and the shapes stroked, because faithful artwork at that size reads as
+a smudge. Everything from 32 px up is faithful. Frames below 256 px are stored as uncompressed DIBs:
+Windows reads PNG compressed frames of those sizes unreliably and silently substitutes a rescaled
+one. `ApplicationIcon` covers `Breeze.exe`, and `Utilities/WindowIcons` hands the file itself to the
+window with `WM_SETICON` once it has a handle, because Avalonia takes a single bitmap and rescales
+it for every size, which would discard the small frames.
 
 ## Security
 
@@ -182,9 +260,9 @@ The full review lives in the commit history; the current model in short:
   Breeze initiated it, so a remote page cannot put the privileged page on screen. Back, forward and
   reload of an already vetted entry still work.
 - **Host messaging restrictions.** Off by default, enabled only for the homepage (above).
-- **Shortcut validation.** URLs are restricted to `http` and `https` on save *and* on load, so a
-  tampered `shortcuts.json` cannot place a `javascript:` URL in a tile. Icon references must be
-  plain file names with no traversal.
+- **Shortcut and bookmark validation.** URLs are restricted to `http` and `https` on save *and* on
+  load, so a tampered `shortcuts.json` or `bookmarks.json` cannot place a `javascript:` URL in a
+  tile or on the bookmark bar. Icon references must be plain file names with no traversal.
 - **Download containment.** The server suggested name is sanitised and the target must resolve
   inside the configured folder, otherwise the download is cancelled.
 - **Favicon fetching.** `http`/`https` only; every URL and every redirect hop is validated, host

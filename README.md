@@ -19,11 +19,17 @@ until the first stable release.
 - Tabs: open, close, switch, and drag to reorder. Closing the last tab closes the window.
 - Address bar: URLs navigate, anything else searches with the selected engine.
 - Back, forward, reload and stop.
-- A bundled homepage served from disk with a search box and manually managed shortcuts
-  (create, edit, delete, drag to reorder), stored as readable JSON.
-- Favicons for shortcuts, discovered from the site and cached on disk.
-- A settings page hosted in a tab as native UI, covering startup page, theme, search engine,
-  the download folder, and clearing history, cookies and cache.
+- Favicons on tabs, taken from the page the engine has already loaded.
+- Bookmarks: a star in the toolbar adds and removes the current page, and a bookmark bar below
+  the toolbar opens them in the current tab, or in a new one with a middle click. Right-click an
+  entry to delete it. The bar appears with your first bookmark and hides again with your last,
+  and `Ctrl+Shift+B` toggles it.
+- A bundled homepage served from disk with the Breeze logo, a search box and manually managed
+  shortcuts (create, edit, delete, drag to reorder), stored as readable JSON.
+- Favicons for shortcuts and bookmarks, discovered from the site and cached on disk.
+- A settings page hosted in a tab as native UI, covering startup page, theme, the homepage logo,
+  bookmarks, search engine, the download folder, keyboard shortcuts, and clearing history,
+  cookies and cache.
 - Light and dark themes, applied to the Breeze UI, the homepage, and passed to sites through
   the engine's preferred colour scheme.
 
@@ -37,8 +43,12 @@ daily browser:
   and no handling of dangerous file types.
 - **Permission prompts.** Requests for camera, microphone, location, notifications and
   clipboard read are refused outright, with no way to allow them.
-- **History and bookmarks.** Browsing history is kept by the engine and can be cleared from
-  settings, but there is no history or bookmarks UI.
+- **History.** Browsing history is kept by the engine and can be cleared from settings, but there
+  is no history UI.
+- **Bookmark folders and a bookmark manager.** Bookmarks are one flat list, editable only through
+  the star and the bar's context menu; there is no renaming, reordering or import and export.
+- **Keyboard shortcut editing.** Settings lists the shortcuts and the file they are stored in
+  accepts overrides, but there is no UI to change them.
 - **Find in page, PDF controls, zoom controls, incognito mode, extensions, profiles, sync.**
 - **UI scale and compact mode** appear in settings but are disabled.
 
@@ -49,7 +59,8 @@ Breeze is built to keep browsing data on the machine. What that means concretely
 - Breeze itself contains no analytics, no crash reporting and no usage statistics. It sends
   nothing to any Breeze-operated service, because none exists.
 - All data lives in `%LOCALAPPDATA%\Breeze`: the WebView2 profile, cached favicons, your
-  shortcuts, your settings, and a local error log. Nothing is uploaded and there is no account.
+  shortcuts, your bookmarks, your settings, and a local error log. Nothing is uploaded and there
+  is no account.
 - Tracking prevention is set to strict, browser extensions are disabled, and password saving
   and autofill are off.
 - Edge reputation checking (SmartScreen), which sends visited URLs to a Microsoft service, is
@@ -75,8 +86,8 @@ the notable ones are worth stating plainly:
 - The homepage is the only origin allowed to talk to the host process, matched on parsed
   origin, and host messaging is switched off on every other page.
 - Remote pages cannot navigate a tab onto Breeze's internal pages.
-- Shortcut URLs are restricted to `http` and `https` on save and on load, and the homepage
-  carries a restrictive content security policy.
+- Shortcut and bookmark URLs are restricted to `http` and `https` on save and on load, and the
+  homepage carries a restrictive content security policy.
 - Downloads are confined to the configured folder with sanitised names.
 - Requests to open new windows become tabs, so nothing renders without a visible address bar.
 - Favicon discovery rejects non-web schemes and any destination, including redirect targets,
@@ -99,7 +110,8 @@ dotnet run --project Breeze
 
 ### Browsing
 
-- [ ] Bookmarks
+- [x] Bookmarks
+- [ ] Bookmark folders and a bookmark manager
 - [ ] History page
 - [ ] Downloads manager
 - [ ] Find in page
