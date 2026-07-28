@@ -21,9 +21,9 @@ until the first stable release.
 - Back, forward, reload and stop.
 - Favicons on tabs, taken from the page the engine has already loaded.
 - Bookmarks: a star in the toolbar adds and removes the current page, and a bookmark bar below
-  the toolbar opens them in the current tab, or in a new one with a middle click. Right-click an
-  entry to delete it. The bar appears with your first bookmark and hides again with your last,
-  and `Ctrl+Shift+B` toggles it.
+  the toolbar opens them in the current tab, or in a new one with a middle click. Drag an entry to
+  reorder it, right-click to delete it. The bar appears with your first bookmark and hides again
+  with your last, and `Ctrl+Shift+B` toggles it.
 - A bundled homepage served from disk with the Breeze logo, a search box and manually managed
   shortcuts (create, edit, delete, drag to reorder), stored as readable JSON.
 - Favicons for shortcuts and bookmarks, discovered from the site and cached on disk.
@@ -48,7 +48,7 @@ daily browser:
 - **History.** Browsing history is kept by the engine and can be cleared from settings, but there
   is no history UI.
 - **Bookmark folders and a bookmark manager.** Bookmarks are one flat list, editable only through
-  the star and the bar's context menu; there is no renaming, reordering or import and export.
+  the star, dragging and the bar's context menu; there is no renaming or import and export.
 - **Keyboard shortcut editing.** Settings lists the shortcuts and the file they are stored in
   accepts overrides, but there is no UI to change them.
 - **Find in page, PDF controls, zoom controls, incognito mode, extensions, profiles, sync.**
@@ -61,8 +61,8 @@ Breeze is built to keep browsing data on the machine. What that means concretely
 - Breeze itself contains no analytics, no crash reporting and no usage statistics. It sends
   nothing to any Breeze-operated service, because none exists.
 - All data lives in `%LOCALAPPDATA%\Breeze`: the WebView2 profile, cached favicons, your
-  shortcuts, your bookmarks, your settings, and a local error log. Nothing is uploaded and there
-  is no account.
+  shortcuts, your bookmarks, your settings, files still being downloaded, and a local error log.
+  Nothing is uploaded and there is no account.
 - Tracking prevention is set to strict, browser extensions are disabled, and password saving
   and autofill are off.
 - Edge reputation checking (SmartScreen), which sends visited URLs to a Microsoft service, is
