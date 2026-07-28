@@ -170,14 +170,19 @@ $artwork = Crop $rendered
 $rendered.Dispose()
 "artwork: $($artwork.Width)x$($artwork.Height)"
 
-# The About page bitmap keeps the framing of the vector master.
-$logo = [System.Drawing.Bitmap]::new(1024, [int][Math]::Round(1024 * $artwork.Height / $artwork.Width), "Format32bppArgb")
+# The About page bitmap keeps the framing of the vector master, plus a transparent margin. Without
+# it the ink sits flush against the edges, and scaling 862 px down to about 52 px for display
+# samples those outermost rows against nothing, which shaves the strokes there and reads as a
+# clipped logo.
+$pad = 31
+$inner = 1024 - (2 * $pad)
+$logo = [System.Drawing.Bitmap]::new(1024, [int][Math]::Round($inner * $artwork.Height / $artwork.Width) + (2 * $pad), "Format32bppArgb")
 $graphics = [System.Drawing.Graphics]::FromImage($logo)
 $graphics.CompositingQuality = "HighQuality"
 $graphics.InterpolationMode = "HighQualityBicubic"
 $graphics.SmoothingMode = "HighQuality"
 $graphics.PixelOffsetMode = "HighQuality"
-$graphics.DrawImage($artwork, [System.Drawing.Rectangle]::new(0, 0, $logo.Width, $logo.Height))
+$graphics.DrawImage($artwork, [System.Drawing.Rectangle]::new($pad, $pad, $inner, $logo.Height - (2 * $pad)))
 $graphics.Dispose()
 [System.IO.File]::WriteAllBytes((Join-Path (Get-Location) "$brand\logo.png"), (Png $logo))
 "logo.png: $($logo.Width)x$($logo.Height)"

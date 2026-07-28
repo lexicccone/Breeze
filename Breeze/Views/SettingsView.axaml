@@ -301,14 +301,15 @@
               <TextBlock Classes="section" Text="About" />
 
               <StackPanel Orientation="Horizontal" Spacing="10">
-                <!-- Drawn from the 1024px master, so it stays sharp on any display scaling. -->
+                <!-- Drawn from the 1024px master, so it stays sharp on any display scaling. The
+                     master carries a transparent margin, so the height allows for it and the mark
+                     itself still reads at about 52px. -->
                 <Image Source="avares://Breeze/Assets/Brand/logo.png"
-                       Height="52"
+                       Height="56"
                        Stretch="Uniform"
                        RenderOptions.BitmapInterpolationMode="HighQuality" />
                 <TextBlock Text="Breeze" FontSize="34" FontWeight="Light" VerticalAlignment="Center" />
               </StackPanel>
-              <TextBlock Classes="hint" Text="A lightweight, privacy focused browser for Windows." />
 
               <TextBlock Classes="group" Text="Versions" />
               <Grid ColumnDefinitions="150,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="6">
