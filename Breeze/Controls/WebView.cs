@@ -291,16 +291,22 @@ public sealed class WebView : NativeControlHost, IWebNavigator
         };
 
         // Downloads land in the configured folder under a sanitized name, never wherever the
-        // server's suggested path points.
+        // server's suggested path points. With "ask where to save" on, that sanitized name and
+        // folder are only what the dialog opens with; the user has the last word.
         webView.DownloadStarting += (_, e) =>
         {
-            if (Downloads.Resolve(e.ResultFilePath) is { } path)
-            {
-                e.ResultFilePath = path;
-            }
-            else
+            if (Downloads.Resolve(e.ResultFilePath) is not { } path)
             {
                 e.Cancel = true;
+                return;
+            }
+
+            e.ResultFilePath = path;
+
+            if (SettingsStore.Current.AskWhereToSave)
+            {
+                // The engine waits on the deferral while the dialog is up.
+                _ = AskWhereToSaveAsync(e, path, e.GetDeferral());
             }
         };
 
@@ -385,6 +391,37 @@ public sealed class WebView : NativeControlHost, IWebNavigator
     {
         CanGoBack = webView.CanGoBack;
         CanGoForward = webView.CanGoForward;
+    }
+
+    /// <summary>Lets the user choose the destination for a download. Cancelling the dialog cancels
+    /// the download, quietly and without creating a file.</summary>
+    private async Task AskWhereToSaveAsync(CoreWebView2DownloadStartingEventArgs e, string suggested, CoreWebView2Deferral deferral)
+    {
+        using (deferral)
+        {
+            try
+            {
+                if (TopLevel.GetTopLevel(this)?.StorageProvider is not { } storage)
+                {
+                    return;
+                }
+
+                if (await Downloads.PromptAsync(storage, suggested) is { } chosen)
+                {
+                    e.ResultFilePath = chosen;
+                }
+                else
+                {
+                    e.Cancel = true;
+                }
+            }
+            catch (Exception error)
+            {
+                // A failed dialog must not start a download the user never confirmed.
+                ErrorLog.Write("downloads.prompt", error);
+                e.Cancel = true;
+            }
+        }
     }
 
     /// <summary>Shows the icon the engine has for the current page. The engine has already fetched
