@@ -87,9 +87,6 @@ public sealed class SettingsViewModel : ViewModelBase
         }
     }
 
-    public string BookmarkBarShortcutHint =>
-        $"Also toggles with {KeyboardShortcuts.Text(KeyboardShortcuts.ToggleBookmarkBar)}.";
-
     /// <summary>Re-reads the bookmark bar setting after it was changed elsewhere, such as by its
     /// keyboard shortcut, so the page never shows a stale value.</summary>
     public void RefreshBookmarkBar() => OnPropertyChanged(nameof(ShowBookmarkBar));

@@ -180,7 +180,6 @@
               <RadioButton GroupName="theme" Content="System" IsChecked="{Binding ThemeIsSystem}" />
               <RadioButton GroupName="theme" Content="Light" IsChecked="{Binding ThemeIsLight}" />
               <RadioButton GroupName="theme" Content="Dark" IsChecked="{Binding ThemeIsDark}" />
-              <TextBlock Classes="hint" Text="Applies to Breeze and to sites that support dark mode." />
 
               <TextBlock Classes="group" Text="Show Breeze logo on homepage" />
               <ToggleSwitch IsChecked="{Binding ShowHomeLogo}"
@@ -218,17 +217,12 @@
                             OffContent="Hidden"
                             OnContent="Shown"
                             AutomationProperties.Name="Show bookmark bar" />
-              <TextBlock Classes="hint" Text="Shows your bookmarks below the toolbar." />
-              <TextBlock Classes="hint" Text="{Binding BookmarkBarShortcutHint}" />
             </StackPanel>
           </ScrollViewer>
 
           <ScrollViewer>
             <StackPanel Classes="page">
               <TextBlock Classes="section" Text="Privacy" />
-              <TextBlock Classes="hint"
-                         Margin="0,0,0,16"
-                         Text="Breeze keeps browsing data on this device only. Nothing is uploaded anywhere." />
 
               <Button Classes="action" Content="Clear browsing history" Command="{Binding ClearHistoryCommand}" />
               <Button Classes="action" Content="Clear cookies" Command="{Binding ClearCookiesCommand}" />
@@ -274,16 +268,14 @@
                   </DataTemplate>
                 </ComboBox.ItemTemplate>
               </ComboBox>
-              <TextBlock Classes="hint" Text="Used by the address bar and the Breeze start page." />
             </StackPanel>
           </ScrollViewer>
 
           <ScrollViewer>
             <StackPanel Classes="page">
               <TextBlock Classes="section" Text="Keyboard Shortcuts" />
-              <TextBlock Classes="hint"
-                         Margin="0,0,0,8"
-                         Text="Shortcuts Breeze responds to. Editing them here is not available yet." />
+              <!-- Kept: it is the page's only sign that editing a shortcut is not implemented. -->
+              <TextBlock Classes="hint" Margin="0,0,0,8" Text="Editing shortcuts is not available yet." />
 
               <ItemsControl ItemsSource="{Binding Shortcuts}">
                 <ItemsControl.ItemTemplate>
