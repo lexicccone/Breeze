@@ -264,38 +264,45 @@ internal sealed class DragReorder
     private void Commit(double offset)
     {
         var to = _to;
-        var residual = Residual(to, offset);
+
+        // Where the dragged item's leading edge sits right now, in the owner's coordinates.
+        var released = _origins[_from] + offset;
 
         if (to != _from)
         {
             _move(_from, to);
+
+            // A virtualizing panel does not update its index to element mapping until it measures,
+            // so force the pass here. Without it, every lookup below addresses the wrong element:
+            // the dragged one would keep its drag transform and never be reconciled.
+            _owner.UpdateLayout();
         }
 
         ClearOffsets();
 
-        // Layout has the item in its new place now; start from where the pointer left it and ease
-        // the remainder, so the drop settles instead of snapping.
-        if (Math.Abs(residual) >= 1 && _owner.ContainerFromIndex(to) is Control settled)
+        // Layout has the item in its new place now, with no transform left on it, so its actual
+        // position is known. Start from where the pointer left it and ease the difference, which
+        // makes the drop settle instead of snapping.
+        if (_owner.ContainerFromIndex(to) is not Control settled ||
+            settled.TranslatePoint(default, _owner) is not { } placed)
         {
-            settled.Transitions = null;
-            settled.RenderTransform = Translate(residual);
-
-            Dispatcher.UIThread.Post(() =>
-            {
-                settled.Transitions = Slide();
-                settled.RenderTransform = Rest;
-            }, DispatcherPriority.Render);
+            return;
         }
-    }
 
-    /// <summary>Distance between where the pointer left the item and where layout will put it.</summary>
-    private double Residual(int to, double offset)
-    {
-        var landing = to > _from
-            ? _origins[to] + _widths[to] - _widths[_from]
-            : _origins[to];
+        var residual = released - placed.X;
 
-        return double.IsNaN(landing) ? 0 : offset - (landing - _origins[_from]);
+        if (Math.Abs(residual) < 1)
+        {
+            return;
+        }
+
+        settled.RenderTransform = Translate(residual);
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            settled.Transitions = Slide();
+            settled.RenderTransform = Rest;
+        }, DispatcherPriority.Render);
     }
 
     private void Cancel()
