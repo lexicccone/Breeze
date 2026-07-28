@@ -493,11 +493,12 @@
           </Grid>
         </Border>
 
-        <!-- Bookmark bar. Virtualized, so a long list costs only the entries on screen. -->
+        <!-- Bookmark bar. Virtualized, so a long list costs only the entries on screen, and
+             draggable to reorder through the same engine the tab strip uses. -->
         <Border Classes="bookmarks" IsVisible="{Binding IsBookmarkBarVisible}">
           <ScrollViewer HorizontalScrollBarVisibility="Hidden"
                         VerticalScrollBarVisibility="Disabled">
-            <ItemsControl ItemsSource="{Binding Bookmarks}" AutomationProperties.Name="Bookmarks">
+            <controls:BookmarkBar ItemsSource="{Binding Bookmarks}" AutomationProperties.Name="Bookmarks">
               <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
                   <VirtualizingStackPanel Orientation="Horizontal" />
@@ -535,7 +536,7 @@
                   </Button>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
-            </ItemsControl>
+            </controls:BookmarkBar>
           </ScrollViewer>
         </Border>
 

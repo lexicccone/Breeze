@@ -55,6 +55,45 @@ public static class BookmarkStore
         }
     }
 
+    /// <summary>Moves a bookmark. The caller passes the URL it believes sits at
+    /// <paramref name="from" />, which is how a bar working from a list another one has already
+    /// changed is caught: the move is refused and the caller is told to reload, so a drop can never
+    /// land on the wrong entry.</summary>
+    public static async Task MoveAsync(string? rawUrl, int from, int to)
+    {
+        if (WebLinks.SafeUrl(rawUrl) is not { } url)
+        {
+            return;
+        }
+
+        await Gate.WaitAsync();
+
+        try
+        {
+            var items = Cache;
+
+            if (from == to || (uint)from >= (uint)items.Count || (uint)to >= (uint)items.Count)
+            {
+                return;
+            }
+
+            if (!string.Equals(items[from].Url, url, StringComparison.OrdinalIgnoreCase))
+            {
+                Changed?.Invoke(null, EventArgs.Empty);
+                return;
+            }
+
+            var bookmark = items[from];
+            items.RemoveAt(from);
+            items.Insert(to, bookmark);
+            Commit();
+        }
+        finally
+        {
+            Gate.Release();
+        }
+    }
+
     public static async Task RemoveAsync(string? rawUrl)
     {
         if (WebLinks.SafeUrl(rawUrl) is not { } url)

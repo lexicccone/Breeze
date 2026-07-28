@@ -8,7 +8,7 @@ using Breeze.Utilities;
 
 namespace Breeze.ViewModels;
 
-public sealed class MainWindowViewModel : ViewModelBase, ITabReorder
+public sealed class MainWindowViewModel : ViewModelBase, ITabReorder, IBookmarkReorder
 {
     /// <summary>Rows kept in the popup. Old finished rows drop off rather than accumulating.</summary>
     private const int MaxDownloadRows = 20;
@@ -127,6 +127,23 @@ public sealed class MainWindowViewModel : ViewModelBase, ITabReorder
         OnPropertyChanged(nameof(SelectedTab));
     }
 
+    /// <summary>Applies a finished bookmark drag. The row moves in this list first, so the bar keeps
+    /// the order the drop left on screen, and the store is told which entry moved so it can refuse a
+    /// move made from a stale view.</summary>
+    public void MoveBookmark(int oldIndex, int newIndex)
+    {
+        if (oldIndex == newIndex ||
+            (uint)oldIndex >= (uint)Bookmarks.Count ||
+            (uint)newIndex >= (uint)Bookmarks.Count)
+        {
+            return;
+        }
+
+        var url = Bookmarks[oldIndex].Url;
+        Bookmarks.Move(oldIndex, newIndex);
+        _ = BookmarkStore.MoveAsync(url, oldIndex, newIndex);
+    }
+
     private void NewTab() => Add(new TabViewModel(CloseTab, StartPage.Url, OpenTab));
 
     /// <summary>Shows a URL a page asked to open in a new window as a tab instead.</summary>
@@ -237,6 +254,13 @@ public sealed class MainWindowViewModel : ViewModelBase, ITabReorder
 
     private void LoadBookmarks()
     {
+        // A change this window already applied, a drag for instance, needs no rebuild: replacing the
+        // rows mid animation would drop the entry the pointer just released.
+        if (Bookmarks.Select(row => row.Url).SequenceEqual(BookmarkStore.Items.Select(item => item.Url)))
+        {
+            return;
+        }
+
         Bookmarks.Clear();
 
         foreach (var bookmark in BookmarkStore.Items)
