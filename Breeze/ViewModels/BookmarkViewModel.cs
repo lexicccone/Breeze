@@ -12,6 +12,7 @@ public sealed class BookmarkViewModel
 {
     public BookmarkViewModel(Bookmark bookmark, Action<string> open, Action<string> openInNewTab, Action<string> delete)
     {
+        Source = bookmark;
         Title = bookmark.Title;
         Url = bookmark.Url;
         Icon = FaviconImages.Load(bookmark.Icon);
@@ -19,6 +20,10 @@ public sealed class BookmarkViewModel
         OpenInNewTabCommand = new RelayCommand(() => openInNewTab(Url));
         DeleteCommand = new RelayCommand(() => delete(Url));
     }
+
+    /// <summary>The stored bookmark this row was built from. Lets the window tell a change it has
+    /// already applied, a drag for instance, from one that needs the rows rebuilt.</summary>
+    public Bookmark Source { get; }
 
     public string Title { get; }
 

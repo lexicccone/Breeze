@@ -18,8 +18,11 @@ public static partial class FaviconCache
 
     private const int MaxRedirects = 5;
 
-    /// <summary>Assumed edge length for icons that do not declare a size.</summary>
-    private const int VectorScore = 1000;
+    /// <summary>Vectors rank last. Breeze's own chrome draws these icons itself and decodes raster
+    /// formats only, so choosing an SVG leaves the bookmark bar on its fallback glyph. One is still
+    /// kept when a site offers nothing else, since the start page can display it.</summary>
+    private const int VectorScore = 0;
+
     private const int AppleTouchScore = 180;
     private const int RasterScore = 64;
     private const int LegacyIconScore = 32;
@@ -37,11 +40,15 @@ public static partial class FaviconCache
             return null;
         }
 
+        // An icon already cached is reused, unless it turns out to be one the chrome cannot draw:
+        // then the site is asked again, in case it offers something better.
         var cached = Find(site.Host);
-        if (cached is not null)
+        if (cached is not null && IsRenderable(cached))
         {
             return cached;
         }
+
+        (string Name, byte[] Data)? undrawable = null;
 
         foreach (var candidate in await CandidatesAsync(site))
         {
@@ -53,21 +60,33 @@ public static partial class FaviconCache
 
             var name = FileName(site.Host, Extension(candidate, icon.Value.ContentType));
 
-            try
+            // An icon Breeze cannot decode is no better than none, so the next candidate gets a
+            // turn. The first one is kept in case the site offers nothing this build can draw.
+            if (!FaviconImages.CanDecode(icon.Value.Data))
             {
-                Directory.CreateDirectory(AppPaths.Favicons);
-                await File.WriteAllBytesAsync(Path.Combine(AppPaths.Favicons, name), icon.Value.Data);
-            }
-            catch (Exception error)
-            {
-                ErrorLog.Write("favicon.save", error);
-                return null;
+                undrawable ??= (name, icon.Value.Data);
+                continue;
             }
 
-            return name;
+            return await SaveAsync(name, icon.Value.Data);
         }
 
-        return null;
+        return undrawable is { } spare ? await SaveAsync(spare.Name, spare.Data) : cached;
+    }
+
+    private static async Task<string?> SaveAsync(string name, byte[] data)
+    {
+        try
+        {
+            Directory.CreateDirectory(AppPaths.Favicons);
+            await File.WriteAllBytesAsync(Path.Combine(AppPaths.Favicons, name), data);
+            return name;
+        }
+        catch (Exception error)
+        {
+            ErrorLog.Write("favicon.save", error);
+            return null;
+        }
     }
 
     private static HttpClient CreateClient()
@@ -192,6 +211,10 @@ public static partial class FaviconCache
     public static bool IsCached(string? fileName) =>
         WebLinks.SafeIcon(fileName) && File.Exists(Path.Combine(AppPaths.Favicons, fileName!));
 
+    /// <summary>True when the cached icon is one Breeze's own chrome can draw. A vector, or a file
+    /// the decoder rejects, is cached but not drawable, and the caller shows its fallback glyph.</summary>
+    public static bool IsRenderable(string? fileName) => FaviconImages.Load(fileName) is not null;
+
     /// <summary>Full path of a cached icon, or null when it is missing or not a plain file name.</summary>
     public static string? FullPath(string? fileName) =>
         IsCached(fileName) ? Path.Combine(AppPaths.Favicons, fileName!) : null;
@@ -295,21 +318,21 @@ public static partial class FaviconCache
             ErrorLog.Write("favicon.parse", error);
         }
 
-        var candidates = declared
-            .OrderByDescending(pair => pair.Value)
-            .Select(pair => pair.Key)
-            .ToList();
-
+        // The default path joins the ranking rather than being appended after it, so a site that
+        // declares only a vector still has its plain icon tried first.
         var fallback = new Uri(site, "/favicon.ico");
         if (!declared.ContainsKey(fallback))
         {
-            candidates.Add(fallback);
+            declared[fallback] = LegacyIconScore;
         }
 
-        return candidates;
+        return declared
+            .OrderByDescending(pair => pair.Value)
+            .Select(pair => pair.Key)
+            .ToList();
     }
 
-    /// <summary>Ranks a declared icon: vectors first, then the largest declared pixel size.</summary>
+    /// <summary>Ranks a declared icon: the largest declared pixel size first, vectors last.</summary>
     private static int Score(string link, Uri url)
     {
         if (Path.GetExtension(url.AbsolutePath).Equals(".svg", StringComparison.OrdinalIgnoreCase))

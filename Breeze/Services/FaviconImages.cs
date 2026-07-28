@@ -34,7 +34,7 @@ public static class FaviconImages
             return known;
         }
 
-        var image = Decode(FaviconCache.FullPath(fileName));
+        var image = Read(FaviconCache.FullPath(fileName));
         Files[fileName] = image;
         return image;
     }
@@ -59,6 +59,23 @@ public static class FaviconImages
         return icon;
     }
 
+    /// <summary>True when these bytes are an image Breeze can draw. Used while choosing a site's
+    /// icon, so a format the decoder rejects never becomes the cached one when an alternative
+    /// exists.</summary>
+    public static bool CanDecode(byte[] data)
+    {
+        try
+        {
+            using var buffer = new MemoryStream(data, writable: false);
+            using var bitmap = new Bitmap(buffer);
+            return bitmap.PixelSize.Width > 0;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
     private static async Task<IImage?> DecodeAsync(Stream data)
     {
         try
@@ -80,11 +97,19 @@ public static class FaviconImages
         }
     }
 
-    private static IImage? Decode(string? path)
+    /// <summary>Reads a cached icon through its bytes rather than by path, so a file the decoder
+    /// rejects cannot leave a handle behind and block the cache from pruning it later.</summary>
+    private static IImage? Read(string? path)
     {
         try
         {
-            return path is null ? null : new Bitmap(path);
+            if (path is null)
+            {
+                return null;
+            }
+
+            using var buffer = new MemoryStream(File.ReadAllBytes(path), writable: false);
+            return new Bitmap(buffer);
         }
         catch (Exception)
         {

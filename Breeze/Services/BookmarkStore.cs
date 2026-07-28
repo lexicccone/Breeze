@@ -55,6 +55,56 @@ public static class BookmarkStore
         }
     }
 
+    /// <summary>Replaces icons the chrome cannot draw, which is how a bookmark saved when vectors
+    /// were preferred picks up the raster icon it should have had. Only entries whose icon is
+    /// present but undrawable are looked up again, so nothing already working is fetched twice.</summary>
+    public static async Task RepairIconsAsync()
+    {
+        var stale = Cache
+            .Where(item => item.Icon is not null && !FaviconCache.IsRenderable(item.Icon))
+            .Select(item => item.Url)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (stale.Count == 0)
+        {
+            return;
+        }
+
+        // The lookups reach the network, so they happen before the gate is taken.
+        var found = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var url in stale)
+        {
+            found[url] = await FaviconCache.EnsureAsync(url);
+        }
+
+        await Gate.WaitAsync();
+
+        try
+        {
+            var changed = false;
+
+            for (var index = 0; index < Cache.Count; index++)
+            {
+                if (found.TryGetValue(Cache[index].Url, out var icon) && icon != Cache[index].Icon)
+                {
+                    Cache[index] = Cache[index] with { Icon = icon };
+                    changed = true;
+                }
+            }
+
+            if (changed)
+            {
+                Commit();
+            }
+        }
+        finally
+        {
+            Gate.Release();
+        }
+    }
+
     /// <summary>Moves a bookmark. The caller passes the URL it believes sits at
     /// <paramref name="from" />, which is how a bar working from a list another one has already
     /// changed is caught: the move is refused and the caller is told to reload, so a drop can never

@@ -23,6 +23,12 @@ public sealed class App : Application
             FaviconCache.Track(() => BookmarkStore.ReferencedIcons);
 
             var model = new MainWindowViewModel();
+
+            // Bookmarks saved with an icon the chrome cannot draw get a better one, once, in the
+            // background. Started after the model exists, so the bar hears the store's change and
+            // refreshes itself.
+            _ = BookmarkStore.RepairIconsAsync();
+
             var window = new MainWindow { DataContext = model };
             model.CloseRequested += (_, _) => window.Close();
             desktop.MainWindow = window;

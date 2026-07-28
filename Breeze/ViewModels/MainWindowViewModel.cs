@@ -255,8 +255,9 @@ public sealed class MainWindowViewModel : ViewModelBase, ITabReorder, IBookmarkR
     private void LoadBookmarks()
     {
         // A change this window already applied, a drag for instance, needs no rebuild: replacing the
-        // rows mid animation would drop the entry the pointer just released.
-        if (Bookmarks.Select(row => row.Url).SequenceEqual(BookmarkStore.Items.Select(item => item.Url)))
+        // rows mid animation would drop the entry the pointer just released. Bookmarks compare by
+        // value, so a change to a title or an icon still rebuilds.
+        if (Bookmarks.Select(row => row.Source).SequenceEqual(BookmarkStore.Items))
         {
             return;
         }
