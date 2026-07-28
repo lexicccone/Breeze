@@ -320,11 +320,11 @@
             <StackPanel Classes="page">
               <TextBlock Classes="section" Text="About" />
 
-              <StackPanel Orientation="Horizontal" Spacing="4">
-                <!-- Drawn from the 512px master, so it stays sharp on any display scaling. -->
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <!-- Drawn from the 1024px master, so it stays sharp on any display scaling. -->
                 <Image Source="avares://Breeze/Assets/Brand/logo.png"
-                       Width="76"
-                       Height="76"
+                       Height="52"
+                       Stretch="Uniform"
                        RenderOptions.BitmapInterpolationMode="HighQuality" />
                 <TextBlock Text="Breeze" FontSize="34" FontWeight="Light" VerticalAlignment="Center" />
               </StackPanel>

@@ -28,12 +28,15 @@
   <ItemGroup>
     <None Update="Assets\StartPage\**" CopyToOutputDirectory="PreserveNewest" />
 
-    <!-- The brand logo is kept once and reaches its two consumers from there: as an application
-         resource for the native views, and as a file next to the start page, which the engine
-         serves from disk through the start page's virtual host. -->
+    <!-- Branding assets are kept once under Assets\Brand and reach their consumers from there.
+         The start page gets the vector master, which the engine serves from disk through the start
+         page's virtual host; the native views get the bitmap; the window gets the icon file, both
+         as a resource and on disk, so Windows can pick the frame that fits each size. -->
     <AvaloniaResource Include="Assets\Brand\logo.png" />
-    <None Include="Assets\Brand\logo.png"
-          Link="Assets\StartPage\logo.png"
+    <AvaloniaResource Include="Assets\Brand\breeze.ico" />
+    <None Include="Assets\Brand\breeze.ico" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Assets\Brand\logo.svg"
+          Link="Assets\StartPage\logo.svg"
           CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

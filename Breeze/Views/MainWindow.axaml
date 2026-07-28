@@ -7,7 +7,7 @@
         x:Class="Breeze.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="Breeze"
-        Icon="/Assets/Brand/logo.png"
+        Icon="/Assets/Brand/breeze.ico"
         Width="1200"
         Height="800"
         WindowStartupLocation="CenterScreen"
