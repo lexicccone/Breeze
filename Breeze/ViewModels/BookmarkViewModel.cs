@@ -10,13 +10,14 @@ namespace Breeze.ViewModels;
 /// a site already shown elsewhere is neither downloaded nor decoded again.</summary>
 public sealed class BookmarkViewModel
 {
-    public BookmarkViewModel(Bookmark bookmark, Action<string> open, Action<string> openInNewTab)
+    public BookmarkViewModel(Bookmark bookmark, Action<string> open, Action<string> openInNewTab, Action<string> delete)
     {
         Title = bookmark.Title;
         Url = bookmark.Url;
         Icon = FaviconImages.Load(bookmark.Icon);
         OpenCommand = new RelayCommand(() => open(Url));
         OpenInNewTabCommand = new RelayCommand(() => openInNewTab(Url));
+        DeleteCommand = new RelayCommand(() => delete(Url));
     }
 
     public string Title { get; }
@@ -31,4 +32,6 @@ public sealed class BookmarkViewModel
     public ICommand OpenCommand { get; }
 
     public ICommand OpenInNewTabCommand { get; }
+
+    public ICommand DeleteCommand { get; }
 }

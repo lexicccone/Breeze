@@ -353,6 +353,11 @@
                           Command="{Binding OpenCommand}"
                           controls:MiddleClick.Command="{Binding OpenInNewTabCommand}"
                           ToolTip.Tip="{Binding Url}">
+                    <Button.ContextMenu>
+                      <ContextMenu>
+                        <MenuItem Header="Delete bookmark" Command="{Binding DeleteCommand}" />
+                      </ContextMenu>
+                    </Button.ContextMenu>
                     <StackPanel Orientation="Horizontal" Spacing="7">
                       <Panel Width="16" Height="16">
                         <Image Source="{Binding Icon}"

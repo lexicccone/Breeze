@@ -145,9 +145,11 @@ public sealed class MainWindowViewModel : ViewModelBase, ITabReorder
 
         // Both paths raise Changed when they finish, which refreshes the bar and the star.
         _ = BookmarkStore.Contains(url)
-            ? BookmarkStore.RemoveAsync(url)
+            ? RemoveBookmarkAsync(url)
             : AddBookmarkAsync(url, tab.Title);
     }
+
+    private void RemoveBookmark(string url) => _ = RemoveBookmarkAsync(url);
 
     /// <summary>Adds a bookmark, and reveals the bar for the very first one so that starring a page
     /// has a visible result. Only the step from no bookmarks to one does this: once there is
@@ -160,6 +162,19 @@ public sealed class MainWindowViewModel : ViewModelBase, ITabReorder
         if (wasEmpty && BookmarkStore.Items.Count > 0 && !SettingsStore.Current.ShowBookmarkBar)
         {
             SetBookmarkBar(true);
+        }
+    }
+
+    /// <summary>Removes a bookmark, and hides the bar once the last one is gone: the mirror of
+    /// revealing it for the first, so an empty bar never takes up room.</summary>
+    private async Task RemoveBookmarkAsync(string url)
+    {
+        var wasLast = BookmarkStore.Items.Count == 1;
+        await BookmarkStore.RemoveAsync(url);
+
+        if (wasLast && BookmarkStore.Items.Count == 0 && SettingsStore.Current.ShowBookmarkBar)
+        {
+            SetBookmarkBar(false);
         }
     }
 
@@ -188,7 +203,7 @@ public sealed class MainWindowViewModel : ViewModelBase, ITabReorder
 
         foreach (var bookmark in BookmarkStore.Items)
         {
-            Bookmarks.Add(new BookmarkViewModel(bookmark, OpenBookmark, OpenTab));
+            Bookmarks.Add(new BookmarkViewModel(bookmark, OpenBookmark, OpenTab, RemoveBookmark));
         }
 
         RefreshBookmarkState();
