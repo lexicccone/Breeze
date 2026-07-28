@@ -108,6 +108,15 @@ dotnet build
 dotnet run --project Breeze
 ```
 
+To build the Windows installer, `dist\Breeze-v<version>-Setup.exe`:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\build-installer.ps1
+```
+
+That needs [Inno Setup 6](https://jrsoftware.org/isinfo.php) as well. See
+[docs/Installer.md](docs/Installer.md) for what it produces and how to prepare a release.
+
 ## Roadmap
 
 ### Browsing

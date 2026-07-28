@@ -188,6 +188,44 @@ $graphics.Dispose()
 "logo.png: $($logo.Width)x$($logo.Height)"
 $logo.Dispose()
 
+# Installer wizard artwork. Inno Setup wants bitmaps and does not scale them, so every size it asks
+# for is drawn from the vector render rather than resampled from one image.
+function Wizard($width, $height, $margin, $out) {
+    $canvas = [System.Drawing.Bitmap]::new($width, $height, "Format24bppRgb")
+    $graphics = [System.Drawing.Graphics]::FromImage($canvas)
+    $graphics.CompositingQuality = "HighQuality"
+    $graphics.InterpolationMode = "HighQualityBicubic"
+    $graphics.SmoothingMode = "HighQuality"
+    $graphics.PixelOffsetMode = "HighQuality"
+
+    # Breeze's dark chrome colour, so the pages read as the browser rather than a default wizard.
+    $graphics.Clear([System.Drawing.Color]::FromArgb(0x17, 0x17, 0x1A))
+
+    $box = [Math]::Min($width, $height) * (1 - (2 * $margin))
+    $scale = [Math]::Min($box / $artwork.Width, $box / $artwork.Height)
+    $drawWidth = [int][Math]::Round($artwork.Width * $scale)
+    $drawHeight = [int][Math]::Round($artwork.Height * $scale)
+    $graphics.DrawImage($artwork, [System.Drawing.Rectangle]::new([int](($width - $drawWidth) / 2), [int](($height - $drawHeight) / 2), $drawWidth, $drawHeight))
+    $graphics.Dispose()
+
+    $canvas.Save((Join-Path (Get-Location) $out), [System.Drawing.Imaging.ImageFormat]::Bmp)
+    $canvas.Dispose()
+    "$out : $width x $height"
+}
+
+$wizard = "installer\assets"
+New-Item -ItemType Directory -Force -Path $wizard | Out-Null
+
+# The sizes Inno Setup loads at 100%, 125%, 150% and 200% display scaling.
+Wizard 164 314 0.10 "$wizard\wizard-large.bmp"
+Wizard 192 386 0.10 "$wizard\wizard-large@125.bmp"
+Wizard 246 459 0.10 "$wizard\wizard-large@150.bmp"
+Wizard 328 604 0.10 "$wizard\wizard-large@200.bmp"
+Wizard 55 55 0.06 "$wizard\wizard-small.bmp"
+Wizard 64 68 0.06 "$wizard\wizard-small@125.bmp"
+Wizard 83 80 0.06 "$wizard\wizard-small@150.bmp"
+Wizard 110 106 0.06 "$wizard\wizard-small@200.bmp"
+
 # Simplified artwork for the sizes where fine detail cannot survive.
 $renderedSmall = Render "small.html" 1400 1120 "$work\small.png"
 $simple = Crop $renderedSmall

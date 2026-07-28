@@ -4,3 +4,5 @@ obj/
 .idea/
 .kiro/
 *.user
+dist/
+installer/build/
