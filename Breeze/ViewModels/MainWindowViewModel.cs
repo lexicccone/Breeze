@@ -146,17 +146,32 @@ public sealed class MainWindowViewModel : ViewModelBase, ITabReorder
         // Both paths raise Changed when they finish, which refreshes the bar and the star.
         _ = BookmarkStore.Contains(url)
             ? BookmarkStore.RemoveAsync(url)
-            : BookmarkStore.AddAsync(url, tab.Title);
+            : AddBookmarkAsync(url, tab.Title);
     }
 
-    private void ToggleBookmarkBar()
+    /// <summary>Adds a bookmark, and reveals the bar for the very first one so that starring a page
+    /// has a visible result. Only the step from no bookmarks to one does this: once there is
+    /// something to show, the setting is the user's to decide, including hiding the bar again.</summary>
+    private async Task AddBookmarkAsync(string url, string title)
     {
-        var settings = SettingsStore.Current;
-        settings.ShowBookmarkBar = !settings.ShowBookmarkBar;
+        var wasEmpty = BookmarkStore.Items.Count == 0;
+        await BookmarkStore.AddAsync(url, title);
+
+        if (wasEmpty && BookmarkStore.Items.Count > 0 && !SettingsStore.Current.ShowBookmarkBar)
+        {
+            SetBookmarkBar(true);
+        }
+    }
+
+    private void ToggleBookmarkBar() => SetBookmarkBar(!SettingsStore.Current.ShowBookmarkBar);
+
+    private void SetBookmarkBar(bool visible)
+    {
+        SettingsStore.Current.ShowBookmarkBar = visible;
         SettingsStore.Save();
         OnPropertyChanged(nameof(IsBookmarkBarVisible));
 
-        // Keep an open settings page showing the value the shortcut just wrote.
+        // Keep an open settings page showing the value that was just written.
         foreach (var tab in Tabs.OfType<SettingsTabViewModel>())
         {
             tab.Settings.RefreshBookmarkBar();
