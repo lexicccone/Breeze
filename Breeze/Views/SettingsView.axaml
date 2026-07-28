@@ -169,14 +169,6 @@
                        Text="{Binding StartupUrl}"
                        IsEnabled="{Binding StartupIsCustom}"
                        AutomationProperties.Name="Custom startup URL" />
-
-              <TextBlock Classes="group" Text="Downloads" />
-              <TextBox Classes="field"
-                       Text="{Binding DownloadFolder}"
-                       AutomationProperties.Name="Default download location" />
-              <CheckBox Margin="0,10,0,0"
-                        Content="Ask where to save each file"
-                        IsChecked="{Binding AskWhereToSave}" />
             </StackPanel>
           </ScrollViewer>
 
@@ -262,7 +254,6 @@
               <TextBlock Classes="group" Text="Before downloading" />
               <CheckBox Content="Ask where to save each file"
                         IsChecked="{Binding AskWhereToSave}" />
-              <TextBlock Classes="hint" Text="Off: files are saved to the folder above. On: Breeze asks for a name and location for each download." />
             </StackPanel>
           </ScrollViewer>
 
