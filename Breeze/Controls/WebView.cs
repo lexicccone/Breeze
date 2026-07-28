@@ -4,7 +4,6 @@ using Avalonia.Styling;
 using Avalonia.Controls;
 using Avalonia.Data;
 using Avalonia.Media;
-using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.Threading;
 using Breeze.Models;
@@ -47,7 +46,6 @@ public sealed class WebView : NativeControlHost, IWebNavigator
     private bool _syncingSource;
     private bool _painted;
     private bool _internalRequested;
-    private Bitmap? _ownedFavicon;
 
     /// <summary>WebView2 exposes no navigation history list, so the visited entries are mirrored
     /// here. Only used to answer "what is one step back or forward", never to navigate.</summary>
@@ -147,15 +145,9 @@ public sealed class WebView : NativeControlHost, IWebNavigator
         _controller?.Close();
         _controller = null;
 
-        // Drop the binding before releasing the bitmap so nothing can render a disposed image.
-        var icon = _ownedFavicon;
-        _ownedFavicon = null;
+        // Favicon bitmaps belong to the shared image cache and are shown by other tabs, so this
+        // view only drops its reference.
         Favicon = null;
-
-        if (icon is not null)
-        {
-            Dispatcher.UIThread.Post(icon.Dispose, DispatcherPriority.Background);
-        }
 
         base.DestroyNativeControlCore(control);
     }
@@ -395,36 +387,42 @@ public sealed class WebView : NativeControlHost, IWebNavigator
         CanGoForward = webView.CanGoForward;
     }
 
+    /// <summary>Shows the icon the engine has for the current page. The engine has already fetched
+    /// and rendered it as part of loading the page, so nothing is downloaded here, and a site seen
+    /// before is answered straight from the shared image cache.</summary>
     private async Task UpdateFaviconAsync(CoreWebView2 webView)
     {
-        if (string.IsNullOrEmpty(webView.FaviconUri))
+        var url = webView.FaviconUri;
+
+        if (string.IsNullOrEmpty(url))
         {
-            ShowFavicon(null);
+            Favicon = null;
+            return;
+        }
+
+        if (FaviconImages.TryGetEngineIcon(url, out var cached))
+        {
+            Favicon = cached;
             return;
         }
 
         try
         {
-            await using var icon = await webView.GetFaviconAsync(CoreWebView2FaviconImageFormat.Png);
-            ShowFavicon(new Bitmap(icon));
+            await using var data = await webView.GetFaviconAsync(CoreWebView2FaviconImageFormat.Png);
+            var icon = await FaviconImages.StoreEngineIconAsync(url, data);
+
+            // The page may have moved on while the bytes were being read; a late icon from the
+            // previous document must not land on the new one.
+            if (!_detached && webView.FaviconUri == url)
+            {
+                Favicon = icon;
+            }
         }
         catch (Exception)
         {
-            ShowFavicon(null);
-        }
-    }
-
-    /// <summary>Publishes a favicon and releases the one it replaces. Disposal is deferred by one
-    /// dispatcher turn so the bindings have already moved to the new bitmap.</summary>
-    private void ShowFavicon(Bitmap? icon)
-    {
-        var previous = _ownedFavicon;
-        _ownedFavicon = icon;
-        Favicon = icon;
-
-        if (previous is not null)
-        {
-            Dispatcher.UIThread.Post(previous.Dispose, DispatcherPriority.Background);
+            // No icon, an unreadable one, or a closed engine: the globe glyph stands in.
+            await FaviconImages.StoreEngineIconAsync(url, null);
+            Favicon = null;
         }
     }
 
