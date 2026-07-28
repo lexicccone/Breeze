@@ -25,8 +25,12 @@ public sealed class SettingsViewModel : ViewModelBase
     private bool _isConfirmOpen;
     private string _privacyStatus = string.Empty;
 
-    public SettingsViewModel()
+    private readonly Action? _bookmarkBarChanged;
+
+    public SettingsViewModel(Action? bookmarkBarChanged = null)
     {
+        _bookmarkBarChanged = bookmarkBarChanged;
+
         ClearHistoryCommand = new RelayCommand(() => Ask(
             "Clear browsing history? This removes the local history for every site.",
             BrowsingData.ClearHistoryAsync,
@@ -60,6 +64,35 @@ public sealed class SettingsViewModel : ViewModelBase
     public ICommand OpenDownloadFolderCommand { get; }
 
     public IReadOnlyList<SearchEngine> SearchEngines => Services.SearchEngines.All;
+
+    /// <summary>Shortcuts shown on the keyboard shortcuts page, read from the catalog.</summary>
+    public IReadOnlyList<ShortcutRowViewModel> Shortcuts { get; } = KeyboardShortcuts.All
+        .Select(definition => new ShortcutRowViewModel(definition.Label, KeyboardShortcuts.Text(definition.Id)))
+        .ToList();
+
+    public bool ShowBookmarkBar
+    {
+        get => _settings.ShowBookmarkBar;
+        set
+        {
+            if (_settings.ShowBookmarkBar == value)
+            {
+                return;
+            }
+
+            _settings.ShowBookmarkBar = value;
+            SettingsStore.Save();
+            OnPropertyChanged();
+            _bookmarkBarChanged?.Invoke();
+        }
+    }
+
+    public string BookmarkBarShortcutHint =>
+        $"Also toggles with {KeyboardShortcuts.Text(KeyboardShortcuts.ToggleBookmarkBar)}.";
+
+    /// <summary>Re-reads the bookmark bar setting after it was changed elsewhere, such as by its
+    /// keyboard shortcut, so the page never shows a stale value.</summary>
+    public void RefreshBookmarkBar() => OnPropertyChanged(nameof(ShowBookmarkBar));
 
     public int SelectedSection
     {

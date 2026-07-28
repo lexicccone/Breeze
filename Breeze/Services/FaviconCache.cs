@@ -26,6 +26,8 @@ public static partial class FaviconCache
 
     private static readonly HttpClient Client = CreateClient();
 
+    private static readonly List<Func<IEnumerable<string>>> References = [];
+
     /// <summary>Returns the cached favicon file name for a site, downloading it only when missing.</summary>
     public static async Task<string?> EnsureAsync(string siteUrl)
     {
@@ -188,11 +190,19 @@ public static partial class FaviconCache
 
     /// <summary>True when the named icon is still present in the cache folder.</summary>
     public static bool IsCached(string? fileName) =>
-        !string.IsNullOrEmpty(fileName) && File.Exists(Path.Combine(AppPaths.Favicons, fileName));
+        WebLinks.SafeIcon(fileName) && File.Exists(Path.Combine(AppPaths.Favicons, fileName!));
 
-    /// <summary>Deletes cached icons that no shortcut refers to any more. A file that is still
+    /// <summary>Full path of a cached icon, or null when it is missing or not a plain file name.</summary>
+    public static string? FullPath(string? fileName) =>
+        IsCached(fileName) ? Path.Combine(AppPaths.Favicons, fileName!) : null;
+
+    /// <summary>Registers a source of still referenced icon file names. Every store that keeps
+    /// icons must register, because pruning deletes anything no registered source claims.</summary>
+    public static void Track(Func<IEnumerable<string>> referenced) => References.Add(referenced);
+
+    /// <summary>Deletes cached icons no registered source refers to any more. A file that is still
     /// referenced is always kept, and a failed delete is ignored.</summary>
-    public static void Prune(IEnumerable<string> referenced)
+    public static void Prune()
     {
         try
         {
@@ -201,7 +211,7 @@ public static partial class FaviconCache
                 return;
             }
 
-            var keep = new HashSet<string>(referenced, StringComparer.OrdinalIgnoreCase);
+            var keep = new HashSet<string>(References.SelectMany(source => source()), StringComparer.OrdinalIgnoreCase);
 
             foreach (var file in Directory.EnumerateFiles(AppPaths.Favicons))
             {

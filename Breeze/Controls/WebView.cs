@@ -9,6 +9,7 @@ using Avalonia.Platform;
 using Avalonia.Threading;
 using Breeze.Models;
 using Breeze.Services;
+using Breeze.Utilities;
 using Microsoft.Web.WebView2.Core;
 
 namespace Breeze.Controls;
@@ -202,6 +203,7 @@ public sealed class WebView : NativeControlHost, IWebNavigator
         }
 
         _controller = controller;
+        controller.AcceleratorKeyPressed += OnAcceleratorKeyPressed;
         Configure(controller.CoreWebView2);
 
         // Paint the engine's empty document in the page colour and keep the native window
@@ -224,6 +226,22 @@ public sealed class WebView : NativeControlHost, IWebNavigator
         _controller.DefaultBackgroundColor = ActualThemeVariant == ThemeVariant.Dark
             ? System.Drawing.Color.FromArgb(0x17, 0x17, 0x1A)
             : System.Drawing.Color.FromArgb(0xFB, 0xFB, 0xFD);
+    }
+
+    /// <summary>Gives Breeze's shortcuts first refusal on keys pressed inside a page; anything no
+    /// shortcut claims stays with the page. The engine blocks its own process until this returns,
+    /// so the action runs on the next dispatcher turn rather than inside the callback.</summary>
+    private void OnAcceleratorKeyPressed(object? sender, CoreWebView2AcceleratorKeyPressedEventArgs e)
+    {
+        if (e.KeyEventKind is not (CoreWebView2KeyEventKind.KeyDown or CoreWebView2KeyEventKind.SystemKeyDown) ||
+            KeyboardState.ToKey(e.VirtualKey) is not { } key ||
+            KeyboardShortcuts.Lookup(key, KeyboardState.Modifiers) is not { } action)
+        {
+            return;
+        }
+
+        e.Handled = true;
+        Dispatcher.UIThread.Post(action);
     }
 
     private void UpdateVisibility()

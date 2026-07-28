@@ -78,9 +78,41 @@
       <Setter Property="Margin" Value="{Binding $parent[Window].OffScreenMargin}" />
     </Style>
 
+    <!-- Bookmark bar entries: same flat, borderless state model as the toolbar buttons. -->
+    <Style Selector="Button.bookmark">
+      <Setter Property="Height" Value="26" />
+      <Setter Property="Padding" Value="8,0" />
+      <Setter Property="Margin" Value="0,0,2,0" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+
+    <Style Selector="Button.bookmark /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource ButtonRestBackground}" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.12" />
+        </Transitions>
+      </Setter>
+    </Style>
+
+    <Style Selector="Button.bookmark:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource ButtonHoverBackground}" />
+    </Style>
+
+    <Style Selector="Button.bookmark:pressed /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource ButtonPressedBackground}" />
+    </Style>
+
     <!-- Padding lives in styles, not on the elements, so the maximized rules below can win. -->
     <Style Selector="Border.toolbar">
       <Setter Property="Padding" Value="8,6" />
+    </Style>
+
+    <Style Selector="Border.bookmarks">
+      <Setter Property="Padding" Value="6,4" />
     </Style>
 
     <Style Selector="controls|DragArea.chrome">
@@ -91,6 +123,10 @@
          chrome gains a small safe area. Windowed spacing is untouched. -->
     <Style Selector="Window[WindowState=Maximized] Border.toolbar, Window[WindowState=FullScreen] Border.toolbar">
       <Setter Property="Padding" Value="16,6" />
+    </Style>
+
+    <Style Selector="Window[WindowState=Maximized] Border.bookmarks, Window[WindowState=FullScreen] Border.bookmarks">
+      <Setter Property="Padding" Value="14,4" />
     </Style>
 
     <Style Selector="Window[WindowState=Maximized] controls|DragArea.chrome, Window[WindowState=FullScreen] controls|DragArea.chrome">
@@ -213,73 +249,136 @@
       </DockPanel>
     </controls:DragArea>
 
+    <!-- Toolbar and bookmark bar share one background and one separator, so showing the bar does
+         not add a second hairline across the window. -->
     <Border DockPanel.Dock="Top"
-            Classes="toolbar"
             Background="{DynamicResource ToolbarBackground}"
             BorderBrush="{DynamicResource ToolbarBorder}"
             BorderThickness="0,0,0,1">
-      <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto" ColumnSpacing="4">
+      <StackPanel>
 
-        <Button Grid.Column="0"
-                Classes="tool"
-                Command="{Binding SelectedTab.BackCommand}"
-                controls:MiddleClick.Command="{Binding SelectedTab.BackInNewTabCommand}"
-                IsEnabled="{Binding SelectedTab.CanGoBack}"
-                ToolTip.Tip="Back"
-                AutomationProperties.Name="Back">
-          <PathIcon Data="{StaticResource IconArrowLeft}" />
-        </Button>
+        <Border Classes="toolbar">
+          <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto" ColumnSpacing="4">
 
-        <Button Grid.Column="1"
-                Classes="tool"
-                Command="{Binding SelectedTab.ForwardCommand}"
-                controls:MiddleClick.Command="{Binding SelectedTab.ForwardInNewTabCommand}"
-                IsEnabled="{Binding SelectedTab.CanGoForward}"
-                ToolTip.Tip="Forward"
-                AutomationProperties.Name="Forward">
-          <PathIcon Data="{StaticResource IconArrowRight}" />
-        </Button>
+            <Button Grid.Column="0"
+                    Classes="tool"
+                    Command="{Binding SelectedTab.BackCommand}"
+                    controls:MiddleClick.Command="{Binding SelectedTab.BackInNewTabCommand}"
+                    IsEnabled="{Binding SelectedTab.CanGoBack}"
+                    ToolTip.Tip="Back"
+                    AutomationProperties.Name="Back">
+              <PathIcon Data="{StaticResource IconArrowLeft}" />
+            </Button>
 
-        <Panel Grid.Column="2">
-          <Button Classes="tool"
-                  IsVisible="{Binding !SelectedTab.IsLoading}"
-                  IsEnabled="{Binding SelectedTab.IsWebPage}"
-                  Command="{Binding SelectedTab.ReloadCommand}"
-                  controls:MiddleClick.Command="{Binding SelectedTab.ReloadInNewTabCommand}"
-                  ToolTip.Tip="Reload"
-                  AutomationProperties.Name="Reload">
-            <PathIcon Data="{StaticResource IconArrowClockwise}" />
-          </Button>
+            <Button Grid.Column="1"
+                    Classes="tool"
+                    Command="{Binding SelectedTab.ForwardCommand}"
+                    controls:MiddleClick.Command="{Binding SelectedTab.ForwardInNewTabCommand}"
+                    IsEnabled="{Binding SelectedTab.CanGoForward}"
+                    ToolTip.Tip="Forward"
+                    AutomationProperties.Name="Forward">
+              <PathIcon Data="{StaticResource IconArrowRight}" />
+            </Button>
 
-          <Button Classes="tool"
-                  IsVisible="{Binding SelectedTab.IsLoading}"
-                  Command="{Binding SelectedTab.StopCommand}"
-                  ToolTip.Tip="Stop"
-                  AutomationProperties.Name="Stop">
-            <PathIcon Data="{StaticResource IconDismiss}" Width="15" Height="15" />
-          </Button>
-        </Panel>
+            <Panel Grid.Column="2">
+              <Button Classes="tool"
+                      IsVisible="{Binding !SelectedTab.IsLoading}"
+                      IsEnabled="{Binding SelectedTab.IsWebPage}"
+                      Command="{Binding SelectedTab.ReloadCommand}"
+                      controls:MiddleClick.Command="{Binding SelectedTab.ReloadInNewTabCommand}"
+                      ToolTip.Tip="Reload"
+                      AutomationProperties.Name="Reload">
+                <PathIcon Data="{StaticResource IconArrowClockwise}" />
+              </Button>
 
-        <controls:AddressBox Grid.Column="3"
-                             Classes="address"
-                             Text="{Binding SelectedTab.AddressText}"
-                             IsEnabled="{Binding SelectedTab.IsWebPage}"
-                             Watermark="Search or enter address"
-                             AutomationProperties.Name="Address and search bar">
-          <controls:AddressBox.KeyBindings>
-            <KeyBinding Gesture="Enter" Command="{Binding SelectedTab.SubmitCommand}" />
-          </controls:AddressBox.KeyBindings>
-        </controls:AddressBox>
+              <Button Classes="tool"
+                      IsVisible="{Binding SelectedTab.IsLoading}"
+                      Command="{Binding SelectedTab.StopCommand}"
+                      ToolTip.Tip="Stop"
+                      AutomationProperties.Name="Stop">
+                <PathIcon Data="{StaticResource IconDismiss}" Width="15" Height="15" />
+              </Button>
+            </Panel>
 
-        <Button Grid.Column="4"
-                Classes="tool"
-                Command="{Binding SettingsCommand}"
-                ToolTip.Tip="Settings"
-                AutomationProperties.Name="Settings">
-          <PathIcon Data="{StaticResource IconSettings}" />
-        </Button>
+            <controls:AddressBox Grid.Column="3"
+                                 Classes="address"
+                                 Text="{Binding SelectedTab.AddressText}"
+                                 IsEnabled="{Binding SelectedTab.IsWebPage}"
+                                 Watermark="Search or enter address"
+                                 AutomationProperties.Name="Address and search bar">
+              <controls:AddressBox.KeyBindings>
+                <KeyBinding Gesture="Enter" Command="{Binding SelectedTab.SubmitCommand}" />
+              </controls:AddressBox.KeyBindings>
+            </controls:AddressBox>
 
-      </Grid>
+            <Button Grid.Column="4"
+                    Classes="tool"
+                    Command="{Binding ToggleBookmarkCommand}"
+                    IsEnabled="{Binding CanBookmark}"
+                    ToolTip.Tip="Bookmark this page"
+                    AutomationProperties.Name="Bookmark this page">
+              <Panel>
+                <PathIcon Data="{StaticResource IconStar}"
+                          IsVisible="{Binding !IsCurrentPageBookmarked}" />
+                <PathIcon Data="{StaticResource IconStarFilled}"
+                          Foreground="{DynamicResource AccentBrush}"
+                          IsVisible="{Binding IsCurrentPageBookmarked}" />
+              </Panel>
+            </Button>
+
+            <Button Grid.Column="5"
+                    Classes="tool"
+                    Command="{Binding SettingsCommand}"
+                    ToolTip.Tip="Settings"
+                    AutomationProperties.Name="Settings">
+              <PathIcon Data="{StaticResource IconSettings}" />
+            </Button>
+
+          </Grid>
+        </Border>
+
+        <!-- Bookmark bar. Virtualized, so a long list costs only the entries on screen. -->
+        <Border Classes="bookmarks" IsVisible="{Binding IsBookmarkBarVisible}">
+          <ScrollViewer HorizontalScrollBarVisibility="Hidden"
+                        VerticalScrollBarVisibility="Disabled">
+            <ItemsControl ItemsSource="{Binding Bookmarks}" AutomationProperties.Name="Bookmarks">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <VirtualizingStackPanel Orientation="Horizontal" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="vm:BookmarkViewModel">
+                  <Button Classes="bookmark"
+                          Command="{Binding OpenCommand}"
+                          controls:MiddleClick.Command="{Binding OpenInNewTabCommand}"
+                          ToolTip.Tip="{Binding Url}">
+                    <StackPanel Orientation="Horizontal" Spacing="7">
+                      <Panel Width="16" Height="16">
+                        <Image Source="{Binding Icon}"
+                               IsVisible="{Binding HasIcon}"
+                               Width="16"
+                               Height="16" />
+                        <PathIcon Data="{StaticResource IconGlobe}"
+                                  Foreground="{DynamicResource GlyphBrush}"
+                                  IsVisible="{Binding !HasIcon}"
+                                  Width="13"
+                                  Height="13" />
+                      </Panel>
+                      <TextBlock Text="{Binding Title}"
+                                 FontSize="12"
+                                 MaxWidth="150"
+                                 VerticalAlignment="Center"
+                                 TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </Border>
+
+      </StackPanel>
     </Border>
 
     <ItemsControl ItemsSource="{Binding HostedTabs}">

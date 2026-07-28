@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Windows.Input;
+using Avalonia.Threading;
 using Breeze.Models;
 using Breeze.Services;
 using Breeze.Utilities;
@@ -15,6 +17,13 @@ public sealed class MainWindowViewModel : ViewModelBase, ITabReorder
     {
         NewTabCommand = new RelayCommand(NewTab);
         SettingsCommand = new RelayCommand(OpenSettings);
+        ToggleBookmarkCommand = new RelayCommand(ToggleBookmark);
+        KeyboardShortcuts.Register(KeyboardShortcuts.ToggleBookmarkBar, ToggleBookmarkBar);
+
+        // One window lives for the life of the process, so this subscription is never removed.
+        BookmarkStore.Changed += OnBookmarksChanged;
+        LoadBookmarks();
+
         Add(new TabViewModel(CloseTab, SettingsStore.StartupAddress(), OpenTab));
     }
 
@@ -28,9 +37,25 @@ public sealed class MainWindowViewModel : ViewModelBase, ITabReorder
     /// containers, and therefore the WebView2 instances, untouched while tabs are reordered.</summary>
     public ObservableCollection<TabViewModel> HostedTabs { get; } = [];
 
+    /// <summary>Bookmarks in stored order, rebuilt whenever the store changes.</summary>
+    public ObservableCollection<BookmarkViewModel> Bookmarks { get; } = [];
+
     public ICommand NewTabCommand { get; }
 
     public ICommand SettingsCommand { get; }
+
+    public ICommand ToggleBookmarkCommand { get; }
+
+    public bool IsBookmarkBarVisible => SettingsStore.Current.ShowBookmarkBar;
+
+    /// <summary>True when the selected tab shows a page that can be bookmarked. Internal pages,
+    /// blank tabs and the settings tab are excluded.</summary>
+    public bool CanBookmark =>
+        SelectedTab is { IsWebPage: true } tab &&
+        WebLinks.SafeUrl(tab.Address) is { } url &&
+        !StartPage.IsInternal(url);
+
+    public bool IsCurrentPageBookmarked => CanBookmark && BookmarkStore.Contains(SelectedTab!.Address);
 
     public TabViewModel? SelectedTab
     {
@@ -51,12 +76,16 @@ public sealed class MainWindowViewModel : ViewModelBase, ITabReorder
             if (previous is not null)
             {
                 previous.IsSelected = false;
+                previous.PropertyChanged -= OnSelectedTabPropertyChanged;
             }
 
             if (value is not null)
             {
                 value.IsSelected = true;
+                value.PropertyChanged += OnSelectedTabPropertyChanged;
             }
+
+            RefreshBookmarkState();
         }
     }
 
@@ -91,7 +120,77 @@ public sealed class MainWindowViewModel : ViewModelBase, ITabReorder
             return;
         }
 
-        Add(new SettingsTabViewModel(CloseTab));
+        Add(new SettingsTabViewModel(CloseTab, () => OnPropertyChanged(nameof(IsBookmarkBarVisible))));
+    }
+
+    /// <summary>Opens a bookmark in the current tab, or in a new one when the selected tab cannot
+    /// navigate, which is the case for the settings tab.</summary>
+    private void OpenBookmark(string url)
+    {
+        if (SelectedTab is { IsWebPage: true } tab)
+        {
+            tab.Address = url;
+            return;
+        }
+
+        OpenTab(url);
+    }
+
+    private void ToggleBookmark()
+    {
+        if (!CanBookmark || SelectedTab is not { } tab || WebLinks.SafeUrl(tab.Address) is not { } url)
+        {
+            return;
+        }
+
+        // Both paths raise Changed when they finish, which refreshes the bar and the star.
+        _ = BookmarkStore.Contains(url)
+            ? BookmarkStore.RemoveAsync(url)
+            : BookmarkStore.AddAsync(url, tab.Title);
+    }
+
+    private void ToggleBookmarkBar()
+    {
+        var settings = SettingsStore.Current;
+        settings.ShowBookmarkBar = !settings.ShowBookmarkBar;
+        SettingsStore.Save();
+        OnPropertyChanged(nameof(IsBookmarkBarVisible));
+
+        // Keep an open settings page showing the value the shortcut just wrote.
+        foreach (var tab in Tabs.OfType<SettingsTabViewModel>())
+        {
+            tab.Settings.RefreshBookmarkBar();
+        }
+    }
+
+    /// <summary>The store completes its work off the UI thread, so the rebuild is marshalled back.</summary>
+    private void OnBookmarksChanged(object? sender, EventArgs args) =>
+        Dispatcher.UIThread.Invoke(LoadBookmarks);
+
+    private void LoadBookmarks()
+    {
+        Bookmarks.Clear();
+
+        foreach (var bookmark in BookmarkStore.Items)
+        {
+            Bookmarks.Add(new BookmarkViewModel(bookmark, OpenBookmark, OpenTab));
+        }
+
+        RefreshBookmarkState();
+    }
+
+    private void OnSelectedTabPropertyChanged(object? sender, PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName is nameof(TabViewModel.Address))
+        {
+            RefreshBookmarkState();
+        }
+    }
+
+    private void RefreshBookmarkState()
+    {
+        OnPropertyChanged(nameof(CanBookmark));
+        OnPropertyChanged(nameof(IsCurrentPageBookmarked));
     }
 
     private void Add(TabViewModel tab)

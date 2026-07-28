@@ -14,6 +14,8 @@ public static class AppPaths
 
     public static string SettingsFile { get; } = Path.Combine(Root, "settings.json");
 
+    public static string BookmarksFile { get; } = Path.Combine(Root, "bookmarks.json");
+
     public static string ErrorLogFile { get; } = Path.Combine(Root, "errors.log");
 
     /// <summary>Writes the file through a temporary sibling so a failure part way through cannot

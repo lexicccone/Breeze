@@ -20,6 +20,12 @@ public sealed class AppSettings
 
     public string SearchEngine { get; set; } = "DuckDuckGo";
 
+    public bool ShowBookmarkBar { get; set; }
+
+    /// <summary>Gesture overrides keyed by shortcut id. Ids the catalog does not know are ignored,
+    /// so a stale entry cannot break key handling.</summary>
+    public Dictionary<string, string> Shortcuts { get; set; } = new();
+
     private static string DefaultDownloadFolder() =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
 }

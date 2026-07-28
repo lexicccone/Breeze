@@ -17,6 +17,11 @@ public sealed class App : Application
         {
             Theming.Apply();
 
+            // Pruning deletes any cached icon no registered source claims, so every store that
+            // keeps icon references must register before the first save can prune.
+            FaviconCache.Track(() => ShortcutStore.ReferencedIcons);
+            FaviconCache.Track(() => BookmarkStore.ReferencedIcons);
+
             var model = new MainWindowViewModel();
             var window = new MainWindow { DataContext = model };
             model.CloseRequested += (_, _) => window.Close();

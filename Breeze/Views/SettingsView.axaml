@@ -113,6 +113,12 @@
           </ListBoxItem>
           <ListBoxItem>
             <StackPanel Orientation="Horizontal" Spacing="10">
+              <PathIcon Data="{StaticResource IconStar}" Width="16" Height="16" />
+              <TextBlock Text="Bookmarks" VerticalAlignment="Center" />
+            </StackPanel>
+          </ListBoxItem>
+          <ListBoxItem>
+            <StackPanel Orientation="Horizontal" Spacing="10">
               <PathIcon Data="{StaticResource IconPrivacy}" Width="16" Height="16" />
               <TextBlock Text="Privacy" VerticalAlignment="Center" />
             </StackPanel>
@@ -127,6 +133,12 @@
             <StackPanel Orientation="Horizontal" Spacing="10">
               <PathIcon Data="{StaticResource IconSearch}" Width="16" Height="16" />
               <TextBlock Text="Search" VerticalAlignment="Center" />
+            </StackPanel>
+          </ListBoxItem>
+          <ListBoxItem>
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <PathIcon Data="{StaticResource IconKeyboard}" Width="16" Height="16" />
+              <TextBlock Text="Keyboard Shortcuts" VerticalAlignment="Center" />
             </StackPanel>
           </ListBoxItem>
           <ListBoxItem>
@@ -203,6 +215,20 @@
 
           <ScrollViewer>
             <StackPanel Classes="page">
+              <TextBlock Classes="section" Text="Bookmarks" />
+
+              <TextBlock Classes="group" Text="Bookmark bar" />
+              <ToggleSwitch IsChecked="{Binding ShowBookmarkBar}"
+                            OffContent="Hidden"
+                            OnContent="Shown"
+                            AutomationProperties.Name="Show bookmark bar" />
+              <TextBlock Classes="hint" Text="Shows your bookmarks below the toolbar." />
+              <TextBlock Classes="hint" Text="{Binding BookmarkBarShortcutHint}" />
+            </StackPanel>
+          </ScrollViewer>
+
+          <ScrollViewer>
+            <StackPanel Classes="page">
               <TextBlock Classes="section" Text="Privacy" />
               <TextBlock Classes="hint"
                          Margin="0,0,0,16"
@@ -255,6 +281,32 @@
                 </ComboBox.ItemTemplate>
               </ComboBox>
               <TextBlock Classes="hint" Text="Used by the address bar and the Breeze start page." />
+            </StackPanel>
+          </ScrollViewer>
+
+          <ScrollViewer>
+            <StackPanel Classes="page">
+              <TextBlock Classes="section" Text="Keyboard Shortcuts" />
+              <TextBlock Classes="hint"
+                         Margin="0,0,0,8"
+                         Text="Shortcuts Breeze responds to. Editing them here is not available yet." />
+
+              <ItemsControl ItemsSource="{Binding Shortcuts}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate DataType="vm:ShortcutRowViewModel">
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,10,0,0">
+                      <TextBlock Grid.Column="0" Text="{Binding Label}" VerticalAlignment="Center" />
+                      <Border Grid.Column="1"
+                              Padding="8,3"
+                              CornerRadius="6"
+                              BorderThickness="1"
+                              BorderBrush="{DynamicResource ToolbarBorder}">
+                        <TextBlock Text="{Binding Gesture}" FontSize="12" />
+                      </Border>
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
             </StackPanel>
           </ScrollViewer>
 
