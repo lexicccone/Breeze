@@ -22,6 +22,8 @@ public sealed class AppSettings
 
     public bool ShowBookmarkBar { get; set; }
 
+    public bool ShowHomeLogo { get; set; } = true;
+
     /// <summary>Gesture overrides keyed by shortcut id. Ids the catalog does not know are ignored,
     /// so a stale entry cannot break key handling.</summary>
     public Dictionary<string, string> Shortcuts { get; set; } = new();

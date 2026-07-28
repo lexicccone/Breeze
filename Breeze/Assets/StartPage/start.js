@@ -10,6 +10,7 @@ const host = window.chrome && window.chrome.webview;
 const form = document.getElementById("search");
 const query = document.getElementById("query");
 const grid = document.getElementById("shortcuts");
+const logo = document.getElementById("logo");
 
 const editor = document.getElementById("editor");
 const editorForm = document.getElementById("editor-form");
@@ -64,6 +65,9 @@ if (host) {
       revision = typeof data.revision === "number" ? data.revision : -1;
       if (typeof data.searchUrl === "string" && data.searchUrl) {
         searchUrl = data.searchUrl;
+      }
+      if (typeof data.showLogo === "boolean") {
+        logo.hidden = !data.showLogo;
       }
       render();
     }

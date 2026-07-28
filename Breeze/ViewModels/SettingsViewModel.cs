@@ -163,6 +163,25 @@ public sealed class SettingsViewModel : ViewModelBase
         set => SetTheme(AppTheme.Dark, value);
     }
 
+    public bool ShowHomeLogo
+    {
+        get => _settings.ShowHomeLogo;
+        set
+        {
+            if (_settings.ShowHomeLogo == value)
+            {
+                return;
+            }
+
+            _settings.ShowHomeLogo = value;
+            SettingsStore.Save();
+            OnPropertyChanged();
+
+            // Open start pages are told the new value, so the logo appears or goes without a reload.
+            StartPageBridge.Refresh();
+        }
+    }
+
     public double UiScale => _settings.UiScale;
 
     public bool CompactMode => _settings.CompactMode;

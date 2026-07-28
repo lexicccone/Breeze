@@ -11,6 +11,8 @@
     <LangVersion>latest</LangVersion>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Icon of Breeze.exe in Explorer and on the taskbar; built from the brand logo. -->
+    <ApplicationIcon>Assets\Brand\breeze.ico</ApplicationIcon>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <InvariantGlobalization>true</InvariantGlobalization>
     <TieredPGO>true</TieredPGO>
@@ -25,6 +27,14 @@
 
   <ItemGroup>
     <None Update="Assets\StartPage\**" CopyToOutputDirectory="PreserveNewest" />
+
+    <!-- The brand logo is kept once and reaches its two consumers from there: as an application
+         resource for the native views, and as a file next to the start page, which the engine
+         serves from disk through the start page's virtual host. -->
+    <AvaloniaResource Include="Assets\Brand\logo.png" />
+    <None Include="Assets\Brand\logo.png"
+          Link="Assets\StartPage\logo.png"
+          CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <!-- Breeze hosts WebView2 directly; the WPF and WinForms wrappers are dead weight. -->

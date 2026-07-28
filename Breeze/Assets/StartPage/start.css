@@ -42,6 +42,23 @@ main {
   text-align: center;
 }
 
+/* The logo makes the block taller, so the search box keeps roughly its usual place. */
+main:has(.logo:not([hidden])) {
+  padding-top: 9vh;
+}
+
+/* Drawn from the 512px master, so it stays crisp at every UI scale. */
+.logo {
+  display: block;
+  width: 104px;
+  height: 104px;
+  margin: 0 auto -6px;
+}
+
+.logo[hidden] {
+  display: none;
+}
+
 .brand {
   margin: 0 0 32px;
   font-size: 40px;

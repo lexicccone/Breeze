@@ -9,7 +9,34 @@ public static class StartPageBridge
 {
     private static readonly JsonSerializerOptions Options = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
-    public static void Attach(CoreWebView2 webView) =>
+    /// <summary>Every engine the bridge is attached to, so a settings change can be pushed to the
+    /// start pages that are open right now.</summary>
+    private static readonly List<CoreWebView2> Engines = [];
+
+    /// <summary>Sends the current settings to every open start page. A closed engine throws on
+    /// first touch and is dropped, which is the only signal WebView2 gives that a tab is gone.</summary>
+    public static void Refresh()
+    {
+        for (var index = Engines.Count - 1; index >= 0; index--)
+        {
+            try
+            {
+                if (StartPage.IsStartPage(Engines[index].Source))
+                {
+                    Publish(Engines[index]);
+                }
+            }
+            catch (Exception)
+            {
+                Engines.RemoveAt(index);
+            }
+        }
+    }
+
+    public static void Attach(CoreWebView2 webView)
+    {
+        Engines.Add(webView);
+
         webView.WebMessageReceived += async (_, e) =>
         {
             if (!StartPage.IsStartPage(e.Source))
@@ -28,6 +55,7 @@ public static class StartPageBridge
                 ErrorLog.Write("bridge", error);
             }
         };
+    }
 
     private static async Task HandleAsync(CoreWebView2 webView, string json)
     {
@@ -71,7 +99,8 @@ public static class StartPageBridge
                 type = "shortcuts",
                 items = ShortcutStore.Items,
                 revision = ShortcutStore.Revision,
-                searchUrl = SearchEngines.Current.QueryUrl
+                searchUrl = SearchEngines.Current.QueryUrl,
+                showLogo = SettingsStore.Current.ShowHomeLogo
             }, Options));
 
     private static string Text(JsonElement message, string name) =>

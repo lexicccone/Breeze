@@ -192,6 +192,12 @@
               <RadioButton GroupName="theme" Content="Dark" IsChecked="{Binding ThemeIsDark}" />
               <TextBlock Classes="hint" Text="Applies to Breeze and to sites that support dark mode." />
 
+              <TextBlock Classes="group" Text="Show Breeze logo on homepage" />
+              <ToggleSwitch IsChecked="{Binding ShowHomeLogo}"
+                            OffContent="Off"
+                            OnContent="On"
+                            AutomationProperties.Name="Show Breeze logo on homepage" />
+
               <TextBlock Classes="group" Text="UI scale" />
               <Slider Width="300"
                       HorizontalAlignment="Left"
@@ -314,7 +320,14 @@
             <StackPanel Classes="page">
               <TextBlock Classes="section" Text="About" />
 
-              <TextBlock Text="Breeze" FontSize="34" FontWeight="Light" />
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <!-- Drawn from the 512px master, so it stays sharp on any display scaling. -->
+                <Image Source="avares://Breeze/Assets/Brand/logo.png"
+                       Width="76"
+                       Height="76"
+                       RenderOptions.BitmapInterpolationMode="HighQuality" />
+                <TextBlock Text="Breeze" FontSize="34" FontWeight="Light" VerticalAlignment="Center" />
+              </StackPanel>
               <TextBlock Classes="hint" Text="A lightweight, privacy focused browser for Windows." />
 
               <TextBlock Classes="group" Text="Versions" />
