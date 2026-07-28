@@ -10,6 +10,16 @@ internal static class Program
     {
         AppIdentity.Apply();
         GuardAgainstCrashes();
+
+        // Every page Breeze shows, its own start page included, is rendered by WebView2. Without the
+        // runtime there is nothing to put in a window, so it is checked before the UI starts: the
+        // user gets an explanation instead of an empty browser.
+        if (WebViewEnvironment.RuntimeVersion is null)
+        {
+            RuntimeNotice.ShowMissingRuntime();
+            return;
+        }
+
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 

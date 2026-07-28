@@ -64,15 +64,18 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription: "Shortcuts:"
-Name: "webview2"; Description: "Install the Microsoft Edge WebView2 Runtime"; GroupDescription: "Required component:"; Check: not WebView2Installed
+; Breeze cannot render a page without this, so declining it cancels the installation rather than
+; leaving a browser that cannot browse.
+Name: "webview2"; Description: "Install the Microsoft Edge WebView2 Runtime (required by Breeze)"; GroupDescription: "Required component:"; Check: not WebView2Installed
 
 [Files]
 ; The published application, runtime included, so no separate .NET install is needed.
 Source: "build\app\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 ; Microsoft's Evergreen bootstrapper. It is a downloader, not a fixed runtime: it fetches the
-; current version at install time and updates itself thereafter.
-Source: "build\MicrosoftEdgeWebview2Setup.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall; Tasks: webview2
+; current version at install time and updates itself thereafter. Extracted by code before anything
+; is installed, which is why it is not copied as part of the file list.
+Source: "build\MicrosoftEdgeWebview2Setup.exe"; Flags: dontcopy
 
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Comment: "Browse the web with Breeze"
@@ -100,39 +103,60 @@ begin
     (Version <> '') and (Version <> '0.0.0.0');
 end;
 
-// Runs the bootstrapper after the files are in place. A failure is explained and the install still
-// finishes, since Breeze itself installed correctly and only needs the runtime to render pages.
-procedure InstallWebView2;
+// Provides the runtime before a single file of Breeze is installed. Returning a message from here
+// stops Setup with that message and installs nothing, which is how a run can never finish while the
+// runtime is absent. Doing this afterwards, as a post-install step, could only warn.
+//
+// The bootstrapper runs with its own window rather than /silent: it downloads the runtime, which on
+// a clean machine takes a while, and Setup cannot repaint while it waits for a child process. With
+// no visible progress that reads as a hung installer.
+function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   Code: Integer;
   Started: Boolean;
 begin
-  WizardForm.StatusLabel.Caption := 'Installing the Microsoft Edge WebView2 Runtime...';
+  Result := '';
 
-  Started := Exec(ExpandConstant('{tmp}\MicrosoftEdgeWebview2Setup.exe'), '/silent /install', '',
-                  SW_SHOW, ewWaitUntilTerminated, Code);
+  if WebView2Installed then
+    Exit;
 
-  // Judged by outcome rather than by exit code: the bootstrapper reports codes of its own when it
-  // decides no work is needed, and what matters is whether the runtime is there afterwards.
+  if not WizardIsTaskSelected('webview2') then
+  begin
+    Result :=
+      'Breeze needs the Microsoft Edge WebView2 Runtime to display web pages, and it is not ' +
+      'installed on this computer.' + #13#10#13#10 +
+      'Setup has stopped rather than install a browser that cannot open a page. Run Setup again ' +
+      'and leave the runtime option selected, or install it yourself from:' + #13#10 +
+      'https://developer.microsoft.com/microsoft-edge/webview2/';
+    Exit;
+  end;
+
+  WizardForm.StatusLabel.Caption := 'Installing the Microsoft Edge WebView2 Runtime. This may take a few minutes...';
+  WizardForm.Refresh;
+
+  ExtractTemporaryFile('MicrosoftEdgeWebview2Setup.exe');
+
+  Started := Exec(ExpandConstant('{tmp}\MicrosoftEdgeWebview2Setup.exe'), '/install', '',
+                  SW_SHOWNORMAL, ewWaitUntilTerminated, Code);
+
+  // Judged by whether the runtime is present afterwards, not by the exit code: the bootstrapper
+  // reports codes of its own, including when it decides no work is needed.
   if WebView2Installed then
     Exit;
 
   if not Started then
-    MsgBox('The WebView2 Runtime installer could not be started.' + #13#10#13#10 +
-           'Breeze is installed, but it cannot display web pages until the runtime is present. ' +
-           'You can install it yourself from:' + #13#10 +
-           'https://developer.microsoft.com/microsoft-edge/webview2/', mbError, MB_OK)
+    Result :=
+      'The Microsoft Edge WebView2 Runtime installer could not be started, so Breeze has not been ' +
+      'installed.' + #13#10#13#10 +
+      'Install the runtime yourself and run Setup again:' + #13#10 +
+      'https://developer.microsoft.com/microsoft-edge/webview2/'
   else
-    MsgBox('The WebView2 Runtime could not be installed (code ' + IntToStr(Code) + ').' + #13#10#13#10 +
-           'Breeze is installed, but it cannot display web pages until the runtime is present. ' +
-           'You can install it yourself from:' + #13#10 +
-           'https://developer.microsoft.com/microsoft-edge/webview2/', mbError, MB_OK);
-end;
-
-procedure CurStepChanged(CurStep: TSetupStep);
-begin
-  if (CurStep = ssPostInstall) and WizardIsTaskSelected('webview2') then
-    InstallWebView2;
+    Result :=
+      'The Microsoft Edge WebView2 Runtime could not be installed (code ' + IntToStr(Code) + '), so ' +
+      'Breeze has not been installed.' + #13#10#13#10 +
+      'The runtime is downloaded during setup, so check the computer''s internet connection and try ' +
+      'again. The offline installer is available from:' + #13#10 +
+      'https://developer.microsoft.com/microsoft-edge/webview2/';
 end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);

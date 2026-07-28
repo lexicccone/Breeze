@@ -49,11 +49,17 @@ with `tools\build-brand.ps1`.
 - Shows the MIT license as the agreement page.
 - Registers Breeze in Installed Apps with its icon, version and publisher, and writes an
   uninstaller.
-- Detects the Microsoft Edge WebView2 Runtime. When it is missing, the wizard offers to install it
-  through Microsoft's Evergreen bootstrapper, which fetches the current version; no fixed runtime is
-  bundled. A failure is explained and the install still finishes. Success is judged by whether the
-  runtime is present afterwards, not by the bootstrapper's exit code, which reports codes of its own
-  when it decides no work is needed.
+- Detects the Microsoft Edge WebView2 Runtime, and when it is missing offers it as a required task on
+  the same page as the desktop shortcut. Microsoft's Evergreen bootstrapper fetches the current
+  version; no fixed runtime is bundled.
+- Installs that runtime before any Breeze file is written, not as a post-install step, so a run can
+  never finish while the runtime is absent. If the task is declined, or the bootstrapper cannot run
+  or leaves the runtime missing, Setup stops with an explanation and installs nothing. Success is
+  judged by whether the runtime is present afterwards, not by the bootstrapper's exit code, which
+  reports codes of its own when it decides no work is needed.
+- Runs the bootstrapper with its own progress window rather than silently. It downloads the runtime,
+  which takes minutes on a clean machine, and Setup cannot repaint while it waits for a child
+  process, so a silent run looks like a hung installer.
 - Offers links to the repository and the release notes on the finish page. Breeze is never started
   automatically.
 - Compresses with `lzma2/fast` and no solid block, favouring install speed over size.

@@ -6,7 +6,6 @@ using Avalonia;
 using Breeze.Models;
 using Breeze.Services;
 using Breeze.Utilities;
-using Microsoft.Web.WebView2.Core;
 
 namespace Breeze.ViewModels;
 
@@ -193,7 +192,7 @@ public sealed class SettingsViewModel : ViewModelBase
 
     public string RuntimeVersion => RuntimeInformation.FrameworkDescription;
 
-    public string WebViewVersion => ReadWebViewVersion();
+    public string WebViewVersion => WebViewEnvironment.RuntimeVersion ?? "Not installed";
 
     public bool IsConfirmOpen
     {
@@ -303,18 +302,6 @@ public sealed class SettingsViewModel : ViewModelBase
         catch (Exception error)
         {
             ErrorLog.Write("downloads.open", error);
-        }
-    }
-
-    private static string ReadWebViewVersion()
-    {
-        try
-        {
-            return CoreWebView2Environment.GetAvailableBrowserVersionString() ?? "Not installed";
-        }
-        catch (Exception)
-        {
-            return "Not installed";
         }
     }
 }

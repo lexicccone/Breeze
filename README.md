@@ -101,7 +101,9 @@ Breeze is an early-stage project and has not yet undergone an external security 
 ## Building
 
 Requires the .NET 10 SDK and the Microsoft Edge WebView2 runtime (present on current Windows
-installs).
+installs). Every page is rendered through that runtime, so when it is missing Breeze explains it
+in a dialog, offers the download page and exits rather than opening a window that cannot show
+anything. The installer will not complete without it either.
 
 ```bash
 dotnet build
