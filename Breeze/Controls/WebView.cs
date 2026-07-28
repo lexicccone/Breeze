@@ -260,6 +260,7 @@ public sealed class WebView : NativeControlHost, IWebNavigator
         StartPage.Register(webView);
         StartPageBridge.Attach(webView);
         BrowsingData.Register(webView);
+        Downloads.Register(webView);
         Theming.Register(webView);
 
         webView.DOMContentLoaded += (_, _) =>
@@ -295,6 +296,9 @@ public sealed class WebView : NativeControlHost, IWebNavigator
         // folder are only what the dialog opens with; the user has the last word.
         webView.DownloadStarting += (_, e) =>
         {
+            // Breeze shows its own downloads popup, so the engine's is suppressed.
+            e.Handled = true;
+
             if (Downloads.Resolve(e.ResultFilePath) is not { } path)
             {
                 e.Cancel = true;
@@ -303,11 +307,14 @@ public sealed class WebView : NativeControlHost, IWebNavigator
 
             e.ResultFilePath = path;
 
-            if (SettingsStore.Current.AskWhereToSave)
+            if (!SettingsStore.Current.AskWhereToSave)
             {
-                // The engine waits on the deferral while the dialog is up.
-                _ = AskWhereToSaveAsync(e, path, e.GetDeferral());
+                DownloadCenter.Track(new EngineDownload(e.DownloadOperation));
+                return;
             }
+
+            // The engine waits on the deferral while the dialog is up.
+            _ = AskWhereToSaveAsync(e, path, e.GetDeferral());
         };
 
         webView.ProcessFailed += (_, e) => ErrorLog.Write("engine", new InvalidOperationException(e.ProcessFailedKind.ToString()));
@@ -409,10 +416,12 @@ public sealed class WebView : NativeControlHost, IWebNavigator
                 if (await Downloads.PromptAsync(storage, suggested) is { } chosen)
                 {
                     e.ResultFilePath = chosen;
+                    DownloadCenter.Track(new EngineDownload(e.DownloadOperation));
                 }
                 else
                 {
                     e.Cancel = true;
+                    Downloads.Sweep();
                 }
             }
             catch (Exception error)
@@ -420,6 +429,7 @@ public sealed class WebView : NativeControlHost, IWebNavigator
                 // A failed dialog must not start a download the user never confirmed.
                 ErrorLog.Write("downloads.prompt", error);
                 e.Cancel = true;
+                Downloads.Sweep();
             }
         }
     }

@@ -10,8 +10,12 @@ namespace Breeze.ViewModels;
 
 public sealed class MainWindowViewModel : ViewModelBase, ITabReorder
 {
+    /// <summary>Rows kept in the popup. Old finished rows drop off rather than accumulating.</summary>
+    private const int MaxDownloadRows = 20;
+
     private TabViewModel? _selectedTab;
     private bool _reordering;
+    private bool _isDownloadsOpen;
 
     public MainWindowViewModel()
     {
@@ -20,7 +24,10 @@ public sealed class MainWindowViewModel : ViewModelBase, ITabReorder
         ToggleBookmarkCommand = new RelayCommand(ToggleBookmark);
         KeyboardShortcuts.Register(KeyboardShortcuts.ToggleBookmarkBar, ToggleBookmarkBar);
 
-        // One window lives for the life of the process, so this subscription is never removed.
+        ToggleDownloadsCommand = new RelayCommand(() => IsDownloadsOpen = !IsDownloadsOpen);
+
+        // One window lives for the life of the process, so these subscriptions are never removed.
+        DownloadCenter.Started += OnDownloadStarted;
         BookmarkStore.Changed += OnBookmarksChanged;
         LoadBookmarks();
 
@@ -45,6 +52,20 @@ public sealed class MainWindowViewModel : ViewModelBase, ITabReorder
     public ICommand SettingsCommand { get; }
 
     public ICommand ToggleBookmarkCommand { get; }
+
+    public ICommand ToggleDownloadsCommand { get; }
+
+    /// <summary>Downloads of this session, newest first. The foundation for a downloads manager:
+    /// the popup only renders this list, and the entries know nothing about where they came from.</summary>
+    public ObservableCollection<DownloadViewModel> Downloads { get; } = [];
+
+    public bool HasDownloads => Downloads.Count > 0;
+
+    public bool IsDownloadsOpen
+    {
+        get => _isDownloadsOpen;
+        set => SetProperty(ref _isDownloadsOpen, value);
+    }
 
     public bool IsBookmarkBarVisible => SettingsStore.Current.ShowBookmarkBar;
 
@@ -192,6 +213,23 @@ public sealed class MainWindowViewModel : ViewModelBase, ITabReorder
             tab.Settings.RefreshBookmarkBar();
         }
     }
+
+    /// <summary>Shows a started download and opens the popup, which is how the user learns the
+    /// download began now that the engine's own popup is suppressed.</summary>
+    private void OnDownloadStarted(object? sender, IDownload download) =>
+        Dispatcher.UIThread.Invoke(() =>
+        {
+            Downloads.Insert(0, new DownloadViewModel(download));
+
+            while (Downloads.Count > MaxDownloadRows &&
+                   Downloads.LastOrDefault(row => !row.IsActive) is { } finished)
+            {
+                Downloads.Remove(finished);
+            }
+
+            OnPropertyChanged(nameof(HasDownloads));
+            IsDownloadsOpen = true;
+        });
 
     /// <summary>The store completes its work off the UI thread, so the rebuild is marshalled back.</summary>
     private void OnBookmarksChanged(object? sender, EventArgs args) =>

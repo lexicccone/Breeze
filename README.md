@@ -27,6 +27,9 @@ until the first stable release.
 - A bundled homepage served from disk with the Breeze logo, a search box and manually managed
   shortcuts (create, edit, delete, drag to reorder), stored as readable JSON.
 - Favicons for shortcuts and bookmarks, discovered from the site and cached on disk.
+- Downloads: files are saved to the configured folder under a sanitised name, or wherever you
+  choose when "ask where to save each file" is on. A Breeze popup in the top right shows progress,
+  speed and status, and offers cancel while running, open and show in folder once finished.
 - A settings page hosted in a tab as native UI, covering startup page, theme, the homepage logo,
   bookmarks, search engine, the download folder, keyboard shortcuts, and clearing history,
   cookies and cache.
@@ -38,9 +41,8 @@ until the first stable release.
 These are absent, not merely unfinished, and are worth knowing before you rely on Breeze as a
 daily browser:
 
-- **Downloads UI.** Downloads use the engine's own UI. Files are placed in the configured
-  folder with a sanitised name, but there is no download list, no "ask where to save" prompt,
-  and no handling of dangerous file types.
+- **A full downloads manager.** The popup covers this session only: there is no download history,
+  no pause and resume, no retry, and no handling of dangerous file types.
 - **Permission prompts.** Requests for camera, microphone, location, notifications and
   clipboard read are refused outright, with no way to allow them.
 - **History.** Browsing history is kept by the engine and can be cleared from settings, but there

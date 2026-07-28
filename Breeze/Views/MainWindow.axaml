@@ -79,6 +79,68 @@
       <Setter Property="Margin" Value="{Binding $parent[Window].OffScreenMargin}" />
     </Style>
 
+    <!-- Downloads popup: same surface and hairline as the rest of the chrome. -->
+    <Style Selector="Border.downloads">
+      <Setter Property="Width" Value="330" />
+      <Setter Property="Padding" Value="12" />
+      <Setter Property="CornerRadius" Value="12" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ToolbarBorder}" />
+      <Setter Property="Background" Value="{DynamicResource ToolbarBackground}" />
+      <Setter Property="BoxShadow" Value="0 8 24 0 #33000000" />
+    </Style>
+
+    <Style Selector="Border.download">
+      <Setter Property="Padding" Value="10,9" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Background" Value="{DynamicResource TabRestBackground}" />
+    </Style>
+
+    <Style Selector="Border.download:pointerover">
+      <Setter Property="Background" Value="{DynamicResource TabHoverBackground}" />
+    </Style>
+
+    <Style Selector="Button.mini">
+      <Setter Property="Width" Value="22" />
+      <Setter Property="Height" Value="22" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+
+    <Style Selector="Button.mini PathIcon">
+      <Setter Property="Width" Value="10" />
+      <Setter Property="Height" Value="10" />
+    </Style>
+
+    <Style Selector="Button.link">
+      <Setter Property="Padding" Value="6,3" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+    </Style>
+
+    <Style Selector="Button.mini /template/ ContentPresenter, Button.link /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource ButtonRestBackground}" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.12" />
+        </Transitions>
+      </Setter>
+    </Style>
+
+    <Style Selector="Button.mini:pointerover /template/ ContentPresenter, Button.link:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource ButtonHoverBackground}" />
+    </Style>
+
+    <Style Selector="Button.mini:pressed /template/ ContentPresenter, Button.link:pressed /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource ButtonPressedBackground}" />
+    </Style>
+
     <!-- Bookmark bar entries: same flat, borderless state model as the toolbar buttons. -->
     <Style Selector="Button.bookmark">
       <Setter Property="Height" Value="26" />
@@ -259,7 +321,7 @@
       <StackPanel>
 
         <Border Classes="toolbar">
-          <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto" ColumnSpacing="4">
+          <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto" ColumnSpacing="4">
 
             <Button Grid.Column="0"
                     Classes="tool"
@@ -313,6 +375,99 @@
             </controls:AddressBox>
 
             <Button Grid.Column="4"
+                    Name="DownloadsButton"
+                    Classes="tool"
+                    IsVisible="{Binding HasDownloads}"
+                    Command="{Binding ToggleDownloadsCommand}"
+                    ToolTip.Tip="Downloads"
+                    AutomationProperties.Name="Downloads">
+              <PathIcon Data="{StaticResource IconDownload}" />
+            </Button>
+
+            <!-- Breeze's own downloads popup; the engine's is suppressed in WebView. A popup is a
+                 window of its own, so it draws above the engine's native child window. -->
+            <Popup Grid.Column="4"
+                   IsOpen="{Binding IsDownloadsOpen, Mode=TwoWay}"
+                   PlacementTarget="{Binding #DownloadsButton}"
+                   Placement="BottomEdgeAlignedRight"
+                   VerticalOffset="6"
+                   IsLightDismissEnabled="True">
+              <Border Classes="downloads">
+                <StackPanel>
+                  <TextBlock Text="Downloads"
+                             FontSize="12"
+                             FontWeight="SemiBold"
+                             Margin="4,0,0,10" />
+                  <ItemsControl ItemsSource="{Binding Downloads}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate DataType="vm:DownloadViewModel">
+                        <Border Classes="download">
+                          <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8">
+                            <TextBlock Grid.Row="0"
+                                       Grid.Column="0"
+                                       Text="{Binding FileName}"
+                                       FontSize="12"
+                                       TextTrimming="CharacterEllipsis" />
+
+                            <Button Grid.Row="0"
+                                    Grid.Column="1"
+                                    Classes="mini"
+                                    IsVisible="{Binding IsActive}"
+                                    Command="{Binding CancelCommand}"
+                                    ToolTip.Tip="Cancel"
+                                    AutomationProperties.Name="Cancel download">
+                              <PathIcon Data="{StaticResource IconDismiss}" />
+                            </Button>
+
+                            <ProgressBar Grid.Row="1"
+                                         Grid.Column="0"
+                                         Grid.ColumnSpan="2"
+                                         Margin="0,8,0,0"
+                                         Height="4"
+                                         MinHeight="4"
+                                         CornerRadius="2"
+                                         Value="{Binding Progress}"
+                                         IsIndeterminate="{Binding IsIndeterminate}"
+                                         ShowProgressText="False"
+                                         Foreground="{DynamicResource AccentBrush}" />
+
+                            <TextBlock Grid.Row="2"
+                                       Grid.Column="0"
+                                       Margin="0,7,0,0"
+                                       FontSize="11"
+                                       VerticalAlignment="Center"
+                                       Foreground="{DynamicResource GlyphBrush}"
+                                       TextTrimming="CharacterEllipsis"
+                                       Text="{Binding Detail}" />
+
+                            <StackPanel Grid.Row="2"
+                                        Grid.Column="1"
+                                        Margin="0,5,0,0"
+                                        Orientation="Horizontal"
+                                        Spacing="4"
+                                        IsVisible="{Binding IsCompleted}">
+                              <Button Classes="link" Content="Open" Command="{Binding OpenCommand}" />
+                              <Button Classes="link" Content="Show in folder" Command="{Binding OpenFolderCommand}" />
+                            </StackPanel>
+
+                            <TextBlock Grid.Row="2"
+                                       Grid.Column="1"
+                                       Margin="0,7,0,0"
+                                       FontSize="11"
+                                       VerticalAlignment="Center"
+                                       IsVisible="{Binding IsUnfinished}"
+                                       Foreground="{DynamicResource GlyphBrush}"
+                                       Text="{Binding Status}" />
+                          </Grid>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </Border>
+            </Popup>
+
+            <Button Grid.Column="5"
                     Classes="tool"
                     Command="{Binding ToggleBookmarkCommand}"
                     IsEnabled="{Binding CanBookmark}"
@@ -327,7 +482,7 @@
               </Panel>
             </Button>
 
-            <Button Grid.Column="5"
+            <Button Grid.Column="6"
                     Classes="tool"
                     Command="{Binding SettingsCommand}"
                     ToolTip.Tip="Settings"
