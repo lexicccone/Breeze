@@ -17,6 +17,10 @@ public sealed class SettingsViewModel : ViewModelBase
     /// <summary>Height of one navigation entry, used to place the selection indicator.</summary>
     private const double SectionPitch = 38;
 
+    /// <summary>Shortcut count past which the page offers a search box.</summary>
+    private const int SearchWorthwhile = 6;
+
+    private string _shortcutSearch = string.Empty;
     private int _selectedSection;
     private Func<Task>? _pending;
     private string _pendingResult = string.Empty;
@@ -48,6 +52,12 @@ public sealed class SettingsViewModel : ViewModelBase
         ConfirmCommand = new RelayCommand(Confirm);
         CancelCommand = new RelayCommand(() => IsConfirmOpen = false);
         OpenDownloadFolderCommand = new RelayCommand(OpenDownloadFolder);
+
+        Shortcuts = KeyboardShortcuts.All
+            .Select(definition => new ShortcutRowViewModel(definition, OnShortcutChanged))
+            .ToList();
+
+        ResetShortcutsCommand = new RelayCommand(ResetShortcuts);
     }
 
     public ICommand ClearHistoryCommand { get; }
@@ -64,10 +74,37 @@ public sealed class SettingsViewModel : ViewModelBase
 
     public IReadOnlyList<SearchEngine> SearchEngines => Services.SearchEngines.All;
 
-    /// <summary>Shortcuts shown on the keyboard shortcuts page, read from the catalog.</summary>
-    public IReadOnlyList<ShortcutRowViewModel> Shortcuts { get; } = KeyboardShortcuts.All
-        .Select(definition => new ShortcutRowViewModel(definition.Label, KeyboardShortcuts.Text(definition.Id)))
-        .ToList();
+    /// <summary>Shortcuts shown on the keyboard shortcuts page, read from the catalog, so one added
+    /// to the catalog is editable here without touching this page.</summary>
+    public IReadOnlyList<ShortcutRowViewModel> Shortcuts { get; }
+
+    /// <summary>Filters the rows by label. Only worth showing once there are enough shortcuts for
+    /// finding one to be work, which the catalog decides rather than this page.</summary>
+    public bool HasShortcutSearch => Shortcuts.Count > SearchWorthwhile;
+
+    public string ShortcutSearch
+    {
+        get => _shortcutSearch;
+        set
+        {
+            if (!SetProperty(ref _shortcutSearch, value))
+            {
+                return;
+            }
+
+            var search = value.Trim();
+
+            foreach (var row in Shortcuts)
+            {
+                row.IsVisible = row.Matches(search);
+            }
+        }
+    }
+
+    public ICommand ResetShortcutsCommand { get; }
+
+    /// <summary>True while at least one shortcut differs from the gesture Breeze ships with.</summary>
+    public bool CanResetShortcuts => Shortcuts.Any(row => !row.IsDefault);
 
     public bool ShowBookmarkBar
     {
@@ -210,6 +247,28 @@ public sealed class SettingsViewModel : ViewModelBase
     {
         get => _privacyStatus;
         private set => SetProperty(ref _privacyStatus, value);
+    }
+
+    /// <summary>One row changed, so every row re-reads the catalog: a gesture given up by one action
+    /// is free for another, and whether anything is left to reset depends on all of them.</summary>
+    private void OnShortcutChanged()
+    {
+        foreach (var row in Shortcuts)
+        {
+            row.Refresh();
+        }
+
+        OnPropertyChanged(nameof(CanResetShortcuts));
+    }
+
+    private void ResetShortcuts()
+    {
+        foreach (var definition in KeyboardShortcuts.All)
+        {
+            KeyboardShortcuts.Reset(definition.Id);
+        }
+
+        OnShortcutChanged();
     }
 
     private void SetStartup(StartupPage page, bool selected)

@@ -37,6 +37,10 @@ until the first stable release.
 - A settings page hosted in a tab as native UI, covering startup page, theme, the homepage logo,
   bookmarks, search engine, the download folder, keyboard shortcuts, and clearing history,
   cookies and cache.
+- Editable keyboard shortcuts: every shortcut Breeze has is listed in settings and can be recorded
+  by pressing the combination you want. Combinations another action already uses are refused and the
+  action holding it is named, a bare key without Ctrl, Alt or Shift is refused, Escape cancels,
+  Backspace leaves a shortcut unset, and Reset puts one, or all of them, back to the default.
 - Light and dark themes, applied to the Breeze UI, the homepage, and passed to sites through
   the engine's preferred colour scheme.
 
@@ -53,8 +57,6 @@ daily browser:
   is no history UI.
 - **A bookmark manager.** Folders, renaming and moving all live on the bar and in its menus; there
   is no separate manager window, no search, and no import or export.
-- **Keyboard shortcut editing.** Settings lists the shortcuts and the file they are stored in
-  accepts overrides, but there is no UI to change them.
 - **Find in page, PDF controls, zoom controls, incognito mode, extensions, profiles, sync.**
 - **UI scale and compact mode** appear in settings but are disabled.
 
@@ -149,7 +151,7 @@ That needs [Inno Setup 6](https://jrsoftware.org/isinfo.php) as well. See
 
 - [ ] Compact mode
 - [ ] UI scaling
-- [ ] Keyboard shortcut customization
+- [x] Keyboard shortcut customization
 - [ ] Custom accent colors
 
 ### Privacy & Security

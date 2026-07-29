@@ -264,10 +264,30 @@ belongs to the user, so a bar they hid stays hidden.
 ## Keyboard shortcuts
 
 `Services/KeyboardShortcuts` is the only place a gesture is written down. It holds the catalog of
-`ShortcutDefinition` (id, label, default gesture), resolves the gesture in force â€” a parsed override
-from `settings.json`, otherwise the default, otherwise nothing â€” caches the result so no parsing
+`ShortcutDefinition` (id, label, default gesture), resolves the gesture in force — a parsed override
+from `settings.json`, otherwise the default, otherwise nothing — caches the result so no parsing
 happens while keys are pressed, and maps a key press to the registered handler. Adding a shortcut
-means adding a definition and registering an action.
+means adding a definition and registering an action; nothing else needs to change, the settings page
+included.
+
+**Editing.** The same service assigns, clears and resets, so the catalog stays the single authority.
+`Assign` refuses a bare key, because shortcuts are resolved while a page has focus and an unmodified
+letter would fire whenever it was typed, and refuses a combination another action already answers to,
+naming that action rather than taking it away. Choosing the shipped gesture removes the override
+instead of storing it, so a row that is back at its default says so. Overrides live in the existing
+`AppSettings.Shortcuts` map and are saved through `SettingsStore` as soon as they change; dropping the
+cached gesture is what makes an edit take effect on the very next key press. A shortcut the user
+cleared stores a marker that is recognised rather than parsed, so it can never fall back to the
+default it was cleared from, and it resolves to `Key.None`, which no press matches.
+
+**Recording.** `ViewModels/SettingsViewModel` builds one `ShortcutRowViewModel` per catalog entry, so
+the page is a view of the catalog rather than a second list of shortcuts. `Controls/ShortcutRecorder`
+does the listening: while recording it marks every press handled, which is what keeps the combination
+being chosen from being performed, since the window resolves shortcuts on the way up from the focused
+element. Escape cancels, Backspace or Delete clears, a modifier on its own is treated as a
+combination still being typed, and anything else is formatted with `KeyGesture` and handed to the row
+through `Models/IShortcutRecorder` as text, which keeps Avalonia's input types out of `Models/`. A
+refused combination leaves recording on and shows why, so trying another costs one key press.
 
 Key presses reach Breeze from two places and both resolve through that one lookup:
 

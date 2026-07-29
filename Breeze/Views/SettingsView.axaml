@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:Breeze.Controls"
              xmlns:vm="using:Breeze.ViewModels"
              x:Class="Breeze.Views.SettingsView"
              x:DataType="vm:SettingsViewModel">
@@ -74,6 +75,29 @@
       <Setter Property="Width" Value="360" />
       <Setter Property="HorizontalAlignment" Value="Left" />
       <Setter Property="CornerRadius" Value="8" />
+    </Style>
+
+    <!-- Keyboard shortcut rows: the gesture reads as a key cap, and turns accent while recording. -->
+    <Style Selector="controls|ShortcutRecorder">
+      <Setter Property="MinWidth" Value="170" />
+      <Setter Property="Padding" Value="10,4" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+
+    <Style Selector="controls|ShortcutRecorder[IsRecording=True]">
+      <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+    </Style>
+
+    <Style Selector="Button.row">
+      <Setter Property="MinWidth" Value="66" />
+      <Setter Property="Padding" Value="10,4" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
     </Style>
   </UserControl.Styles>
 
@@ -274,25 +298,59 @@
           <ScrollViewer>
             <StackPanel Classes="page">
               <TextBlock Classes="section" Text="Keyboard Shortcuts" />
-              <!-- Kept: it is the page's only sign that editing a shortcut is not implemented. -->
-              <TextBlock Classes="hint" Margin="0,0,0,8" Text="Editing shortcuts is not available yet." />
+
+              <TextBox Classes="field"
+                       Margin="0,0,0,6"
+                       IsVisible="{Binding HasShortcutSearch}"
+                       Text="{Binding ShortcutSearch, Mode=TwoWay}"
+                       Watermark="Search shortcuts"
+                       AutomationProperties.Name="Search shortcuts" />
 
               <ItemsControl ItemsSource="{Binding Shortcuts}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate DataType="vm:ShortcutRowViewModel">
-                    <Grid ColumnDefinitions="*,Auto" Margin="0,10,0,0">
-                      <TextBlock Grid.Column="0" Text="{Binding Label}" VerticalAlignment="Center" />
-                      <Border Grid.Column="1"
-                              Padding="8,3"
-                              CornerRadius="6"
-                              BorderThickness="1"
-                              BorderBrush="{DynamicResource ToolbarBorder}">
-                        <TextBlock Text="{Binding Gesture}" FontSize="12" />
-                      </Border>
-                    </Grid>
+                    <StackPanel IsVisible="{Binding IsVisible}" Margin="0,10,0,0">
+                      <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="8">
+                        <TextBlock Grid.Column="0" Text="{Binding Label}" VerticalAlignment="Center" />
+
+                        <!-- The gesture is itself the recording surface, so it can be clicked
+                             directly as well as reached through Edit. -->
+                        <controls:ShortcutRecorder Grid.Column="1"
+                                                   Content="{Binding Display}"
+                                                   IsRecording="{Binding IsRecording}"
+                                                   ToolTip.Tip="Click, then press a combination"
+                                                   AutomationProperties.Name="Shortcut" />
+
+                        <Button Grid.Column="2"
+                                Classes="row"
+                                Content="Edit"
+                                Command="{Binding EditCommand}" />
+
+                        <Button Grid.Column="3"
+                                Classes="row"
+                                Content="Reset"
+                                Command="{Binding ResetCommand}"
+                                IsEnabled="{Binding !IsDefault}" />
+                      </Grid>
+
+                      <TextBlock Classes="hint"
+                                 IsVisible="{Binding HasError}"
+                                 Text="{Binding Error}"
+                                 Foreground="{DynamicResource AccentBrush}" />
+                    </StackPanel>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
+
+              <TextBlock Classes="hint"
+                         Margin="0,14,0,0"
+                         Text="Escape cancels recording. Backspace or Delete leaves a shortcut unset." />
+
+              <Button Classes="action"
+                      Margin="0,14,0,0"
+                      Content="Reset all shortcuts"
+                      Command="{Binding ResetShortcutsCommand}"
+                      IsEnabled="{Binding CanResetShortcuts}" />
             </StackPanel>
           </ScrollViewer>
 
