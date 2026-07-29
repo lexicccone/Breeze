@@ -6,26 +6,27 @@ using Breeze.Utilities;
 
 namespace Breeze.ViewModels;
 
-/// <summary>One entry on the bookmark bar. The icon comes from the shared favicon image cache, so
-/// a site already shown elsewhere is neither downloaded nor decoded again.</summary>
-public sealed class BookmarkViewModel
+/// <summary>A bookmarked page, on the bar or inside a folder. The icon comes from the shared favicon
+/// image cache, so a site already shown elsewhere is neither downloaded nor decoded again.</summary>
+public sealed class BookmarkViewModel : BookmarkRowViewModel
 {
-    public BookmarkViewModel(Bookmark bookmark, Action<string> open, Action<string> openInNewTab, Action<string> delete)
+    internal BookmarkViewModel(Bookmark bookmark, IBookmarkActions actions)
+        : base(bookmark)
     {
-        Source = bookmark;
-        Title = bookmark.Title;
         Url = bookmark.Url;
         Icon = FaviconImages.Load(bookmark.Icon);
-        OpenCommand = new RelayCommand(() => open(Url));
-        OpenInNewTabCommand = new RelayCommand(() => openInNewTab(Url));
-        DeleteCommand = new RelayCommand(() => delete(Url));
+        OpenCommand = new RelayCommand(() => actions.Open(this));
+        OpenInNewTabCommand = new RelayCommand(() => actions.OpenInNewTab(this));
+
+        Actions =
+        [
+            new BookmarkAction("Open", OpenCommand),
+            new BookmarkAction("Open in New Tab", OpenInNewTabCommand),
+            new BookmarkAction("Rename", new RelayCommand(() => actions.Rename(this))),
+            new BookmarkAction("Delete", new RelayCommand(() => actions.Delete(this))),
+            new BookmarkAction("Move to Folder...", new RelayCommand(() => actions.MoveToFolder(this)))
+        ];
     }
-
-    /// <summary>The stored bookmark this row was built from. Lets the window tell a change it has
-    /// already applied, a drag for instance, from one that needs the rows rebuilt.</summary>
-    public Bookmark Source { get; }
-
-    public string Title { get; }
 
     public string Url { get; }
 
@@ -37,6 +38,4 @@ public sealed class BookmarkViewModel
     public ICommand OpenCommand { get; }
 
     public ICommand OpenInNewTabCommand { get; }
-
-    public ICommand DeleteCommand { get; }
 }

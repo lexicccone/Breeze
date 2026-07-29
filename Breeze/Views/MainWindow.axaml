@@ -15,6 +15,74 @@
         ExtendClientAreaChromeHints="PreferSystemChrome"
         ExtendClientAreaTitleBarHeightHint="-1">
 
+  <Window.Resources>
+    <!-- One description of a bookmark's right click actions, shown by the bar and by the folder
+         menus alike. The rows supply the list; this turns each entry into a menu item. -->
+    <ControlTheme x:Key="BookmarkActionTheme"
+                  TargetType="MenuItem"
+                  BasedOn="{StaticResource {x:Type MenuItem}}"
+                  x:DataType="vm:BookmarkAction">
+      <Setter Property="Header" Value="{Binding Label}" />
+      <Setter Property="Command" Value="{Binding Command}" />
+    </ControlTheme>
+
+    <!-- Rows inside a folder menu. The menu is built in code, because it is recursive and its
+         entries can be dragged, and it looks these up by key. -->
+    <DataTemplate x:Key="BookmarkMenuBookmark" DataType="vm:BookmarkViewModel">
+      <Button Classes="menurow"
+              Command="{Binding OpenCommand}"
+              controls:MiddleClick.Command="{Binding OpenInNewTabCommand}"
+              ToolTip.Tip="{Binding Url}">
+        <Button.ContextMenu>
+          <ContextMenu ItemsSource="{Binding Actions}"
+                       ItemContainerTheme="{StaticResource BookmarkActionTheme}" />
+        </Button.ContextMenu>
+        <StackPanel Orientation="Horizontal" Spacing="9">
+          <Panel Width="16" Height="16">
+            <Image Source="{Binding Icon}" IsVisible="{Binding HasIcon}" Width="16" Height="16" />
+            <PathIcon Data="{StaticResource IconGlobe}"
+                      Foreground="{DynamicResource GlyphBrush}"
+                      IsVisible="{Binding !HasIcon}"
+                      Width="13"
+                      Height="13" />
+          </Panel>
+          <TextBlock Text="{Binding Title}"
+                     FontSize="12"
+                     MaxWidth="230"
+                     VerticalAlignment="Center"
+                     TextTrimming="CharacterEllipsis" />
+        </StackPanel>
+      </Button>
+    </DataTemplate>
+
+    <DataTemplate x:Key="BookmarkMenuFolder" DataType="vm:BookmarkFolderViewModel">
+      <Button Classes="menurow">
+        <Button.ContextMenu>
+          <ContextMenu ItemsSource="{Binding Actions}"
+                       ItemContainerTheme="{StaticResource BookmarkActionTheme}" />
+        </Button.ContextMenu>
+        <Grid ColumnDefinitions="16,*,10" ColumnSpacing="9">
+          <PathIcon Grid.Column="0"
+                    Data="{StaticResource IconFolder}"
+                    Foreground="{DynamicResource GlyphBrush}"
+                    Width="14"
+                    Height="14" />
+          <TextBlock Grid.Column="1"
+                     Text="{Binding Title}"
+                     FontSize="12"
+                     MaxWidth="210"
+                     VerticalAlignment="Center"
+                     TextTrimming="CharacterEllipsis" />
+          <PathIcon Grid.Column="2"
+                    Data="{StaticResource IconChevronRight}"
+                    Foreground="{DynamicResource GlyphBrush}"
+                    Width="9"
+                    Height="9" />
+        </Grid>
+      </Button>
+    </DataTemplate>
+  </Window.Resources>
+
   <Window.Styles>
     <Style Selector="Button.tool">
       <Setter Property="Width" Value="32" />
@@ -241,6 +309,61 @@
 
     <Style Selector="ListBox.tabs ListBoxItem:selected Button.close">
       <Setter Property="IsVisible" Value="True" />
+    </Style>
+
+    <!-- Folder menus: the same surface, hairline and shadow as the downloads popup. -->
+    <Style Selector="Border.bookmarkmenu">
+      <Setter Property="Padding" Value="5" />
+      <Setter Property="MaxWidth" Value="330" />
+      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ToolbarBorder}" />
+      <Setter Property="Background" Value="{DynamicResource ToolbarBackground}" />
+      <Setter Property="BoxShadow" Value="0 8 24 0 #33000000" />
+    </Style>
+
+    <Style Selector="TextBlock.bookmarkempty">
+      <Setter Property="Margin" Value="9,6" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Foreground" Value="{DynamicResource GlyphBrush}" />
+    </Style>
+
+    <Style Selector="Button.menurow">
+      <Setter Property="Height" Value="30" />
+      <Setter Property="Padding" Value="8,0" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Left" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+
+    <Style Selector="Button.menurow /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource ButtonRestBackground}" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.12" />
+        </Transitions>
+      </Setter>
+    </Style>
+
+    <Style Selector="Button.menurow:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource ButtonHoverBackground}" />
+    </Style>
+
+    <Style Selector="Button.menurow:pressed /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource ButtonPressedBackground}" />
+    </Style>
+
+    <!-- The folder a dragged entry is about to go into. Declared after the hover rules, which the
+         pointer is inevitably triggering at the same time, so this is the one that shows. -->
+    <Style Selector="ContentPresenter.droptarget Button.bookmark /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource DropTargetBackground}" />
+    </Style>
+
+    <Style Selector="ContentPresenter.droptarget Button.menurow /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource DropTargetBackground}" />
     </Style>
   </Window.Styles>
 
@@ -494,26 +617,34 @@
         </Border>
 
         <!-- Bookmark bar. Virtualized, so a long list costs only the entries on screen, and
-             draggable to reorder through the same engine the tab strip uses. -->
+             draggable to reorder through the same engine the tab strip uses. Folders sit among the
+             bookmarks: clicking one opens its menu, and a drag can be dropped into one. -->
         <Border Classes="bookmarks" IsVisible="{Binding IsBookmarkBarVisible}">
+          <Border.ContextMenu>
+            <ContextMenu>
+              <MenuItem Header="New Bookmark" Command="{Binding Bookmarks.NewBookmarkCommand}" />
+              <MenuItem Header="New Folder" Command="{Binding Bookmarks.NewFolderCommand}" />
+            </ContextMenu>
+          </Border.ContextMenu>
           <ScrollViewer HorizontalScrollBarVisibility="Hidden"
                         VerticalScrollBarVisibility="Disabled">
-            <controls:BookmarkBar ItemsSource="{Binding Bookmarks}" AutomationProperties.Name="Bookmarks">
+            <controls:BookmarkBar ItemsSource="{Binding Bookmarks.Rows}"
+                                  Surface="{Binding Bookmarks}"
+                                  AutomationProperties.Name="Bookmarks">
               <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
                   <VirtualizingStackPanel Orientation="Horizontal" />
                 </ItemsPanelTemplate>
               </ItemsControl.ItemsPanel>
-              <ItemsControl.ItemTemplate>
+              <ItemsControl.DataTemplates>
                 <DataTemplate DataType="vm:BookmarkViewModel">
                   <Button Classes="bookmark"
                           Command="{Binding OpenCommand}"
                           controls:MiddleClick.Command="{Binding OpenInNewTabCommand}"
                           ToolTip.Tip="{Binding Url}">
                     <Button.ContextMenu>
-                      <ContextMenu>
-                        <MenuItem Header="Delete bookmark" Command="{Binding DeleteCommand}" />
-                      </ContextMenu>
+                      <ContextMenu ItemsSource="{Binding Actions}"
+                                   ItemContainerTheme="{StaticResource BookmarkActionTheme}" />
                     </Button.ContextMenu>
                     <StackPanel Orientation="Horizontal" Spacing="7">
                       <Panel Width="16" Height="16">
@@ -535,7 +666,31 @@
                     </StackPanel>
                   </Button>
                 </DataTemplate>
-              </ItemsControl.ItemTemplate>
+
+                <DataTemplate DataType="vm:BookmarkFolderViewModel">
+                  <controls:BookmarkFolderButton Classes="bookmark" ToolTip.Tip="{Binding Title}">
+                    <controls:BookmarkFolderButton.ContextMenu>
+                      <ContextMenu ItemsSource="{Binding Actions}"
+                                   ItemContainerTheme="{StaticResource BookmarkActionTheme}" />
+                    </controls:BookmarkFolderButton.ContextMenu>
+                    <StackPanel Orientation="Horizontal" Spacing="7">
+                      <PathIcon Data="{StaticResource IconFolder}"
+                                Foreground="{DynamicResource GlyphBrush}"
+                                Width="14"
+                                Height="14" />
+                      <TextBlock Text="{Binding Title}"
+                                 FontSize="12"
+                                 MaxWidth="150"
+                                 VerticalAlignment="Center"
+                                 TextTrimming="CharacterEllipsis" />
+                      <PathIcon Data="{StaticResource IconChevronDown}"
+                                Foreground="{DynamicResource GlyphBrush}"
+                                Width="8"
+                                Height="8" />
+                    </StackPanel>
+                  </controls:BookmarkFolderButton>
+                </DataTemplate>
+              </ItemsControl.DataTemplates>
             </controls:BookmarkBar>
           </ScrollViewer>
         </Border>

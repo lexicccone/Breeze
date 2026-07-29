@@ -8,7 +8,7 @@ using Breeze.Utilities;
 
 namespace Breeze.ViewModels;
 
-public sealed class MainWindowViewModel : ViewModelBase, ITabReorder, IBookmarkReorder
+public sealed class MainWindowViewModel : ViewModelBase, ITabReorder
 {
     /// <summary>Rows kept in the popup. Old finished rows drop off rather than accumulating.</summary>
     private const int MaxDownloadRows = 20;
@@ -26,10 +26,11 @@ public sealed class MainWindowViewModel : ViewModelBase, ITabReorder, IBookmarkR
 
         ToggleDownloadsCommand = new RelayCommand(() => IsDownloadsOpen = !IsDownloadsOpen);
 
+        Bookmarks = new BookmarksViewModel(OpenBookmark, OpenTab);
+
         // One window lives for the life of the process, so these subscriptions are never removed.
         DownloadCenter.Started += OnDownloadStarted;
         BookmarkStore.Changed += OnBookmarksChanged;
-        LoadBookmarks();
 
         Add(new TabViewModel(CloseTab, SettingsStore.StartupAddress(), OpenTab));
     }
@@ -44,8 +45,8 @@ public sealed class MainWindowViewModel : ViewModelBase, ITabReorder, IBookmarkR
     /// containers, and therefore the WebView2 instances, untouched while tabs are reordered.</summary>
     public ObservableCollection<TabViewModel> HostedTabs { get; } = [];
 
-    /// <summary>Bookmarks in stored order, rebuilt whenever the store changes.</summary>
-    public ObservableCollection<BookmarkViewModel> Bookmarks { get; } = [];
+    /// <summary>The bookmark bar: its rows, its folders and everything they can be asked to do.</summary>
+    public BookmarksViewModel Bookmarks { get; }
 
     public ICommand NewTabCommand { get; }
 
@@ -127,23 +128,6 @@ public sealed class MainWindowViewModel : ViewModelBase, ITabReorder, IBookmarkR
         OnPropertyChanged(nameof(SelectedTab));
     }
 
-    /// <summary>Applies a finished bookmark drag. The row moves in this list first, so the bar keeps
-    /// the order the drop left on screen, and the store is told which entry moved so it can refuse a
-    /// move made from a stale view.</summary>
-    public void MoveBookmark(int oldIndex, int newIndex)
-    {
-        if (oldIndex == newIndex ||
-            (uint)oldIndex >= (uint)Bookmarks.Count ||
-            (uint)newIndex >= (uint)Bookmarks.Count)
-        {
-            return;
-        }
-
-        var url = Bookmarks[oldIndex].Url;
-        Bookmarks.Move(oldIndex, newIndex);
-        _ = BookmarkStore.MoveAsync(url, oldIndex, newIndex);
-    }
-
     private void NewTab() => Add(new TabViewModel(CloseTab, StartPage.Url, OpenTab));
 
     /// <summary>Shows a URL a page asked to open in a new window as a tab instead.</summary>
@@ -187,30 +171,28 @@ public sealed class MainWindowViewModel : ViewModelBase, ITabReorder, IBookmarkR
             : AddBookmarkAsync(url, tab.Title);
     }
 
-    private void RemoveBookmark(string url) => _ = RemoveBookmarkAsync(url);
-
     /// <summary>Adds a bookmark, and reveals the bar for the very first one so that starring a page
-    /// has a visible result. Only the step from no bookmarks to one does this: once there is
+    /// has a visible result. Only the step from an empty bar to one entry does this: once there is
     /// something to show, the setting is the user's to decide, including hiding the bar again.</summary>
     private async Task AddBookmarkAsync(string url, string title)
     {
-        var wasEmpty = BookmarkStore.Items.Count == 0;
+        var wasEmpty = BookmarkStore.IsEmpty;
         await BookmarkStore.AddAsync(url, title);
 
-        if (wasEmpty && BookmarkStore.Items.Count > 0 && !SettingsStore.Current.ShowBookmarkBar)
+        if (wasEmpty && !BookmarkStore.IsEmpty && !SettingsStore.Current.ShowBookmarkBar)
         {
             SetBookmarkBar(true);
         }
     }
 
-    /// <summary>Removes a bookmark, and hides the bar once the last one is gone: the mirror of
-    /// revealing it for the first, so an empty bar never takes up room.</summary>
+    /// <summary>Removes the bookmarks for a page, and hides the bar once nothing is left on it: the
+    /// mirror of revealing it for the first, so an empty bar never takes up room. A folder counts as
+    /// something to show, even an empty one, so the bar stays while folders remain.</summary>
     private async Task RemoveBookmarkAsync(string url)
     {
-        var wasLast = BookmarkStore.Items.Count == 1;
-        await BookmarkStore.RemoveAsync(url);
+        await BookmarkStore.RemoveUrlAsync(url);
 
-        if (wasLast && BookmarkStore.Items.Count == 0 && SettingsStore.Current.ShowBookmarkBar)
+        if (BookmarkStore.IsEmpty && SettingsStore.Current.ShowBookmarkBar)
         {
             SetBookmarkBar(false);
         }
@@ -248,29 +230,11 @@ public sealed class MainWindowViewModel : ViewModelBase, ITabReorder, IBookmarkR
             IsDownloadsOpen = true;
         });
 
-    /// <summary>The store completes its work off the UI thread, so the rebuild is marshalled back.</summary>
+    /// <summary>The rows keep themselves in step; this only refreshes the star, which follows
+    /// whether the open page is bookmarked anywhere. The store finishes its work off the UI thread,
+    /// so the update is marshalled back.</summary>
     private void OnBookmarksChanged(object? sender, EventArgs args) =>
-        Dispatcher.UIThread.Invoke(LoadBookmarks);
-
-    private void LoadBookmarks()
-    {
-        // A change this window already applied, a drag for instance, needs no rebuild: replacing the
-        // rows mid animation would drop the entry the pointer just released. Bookmarks compare by
-        // value, so a change to a title or an icon still rebuilds.
-        if (Bookmarks.Select(row => row.Source).SequenceEqual(BookmarkStore.Items))
-        {
-            return;
-        }
-
-        Bookmarks.Clear();
-
-        foreach (var bookmark in BookmarkStore.Items)
-        {
-            Bookmarks.Add(new BookmarkViewModel(bookmark, OpenBookmark, OpenTab, RemoveBookmark));
-        }
-
-        RefreshBookmarkState();
-    }
+        Dispatcher.UIThread.Invoke(RefreshBookmarkState);
 
     private void OnSelectedTabPropertyChanged(object? sender, PropertyChangedEventArgs args)
     {

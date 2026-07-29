@@ -1,0 +1,89 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Breeze.ViewModels"
+        x:Class="Breeze.Views.BookmarkPromptWindow"
+        x:DataType="vm:BookmarkPromptViewModel"
+        Title="{Binding Header}"
+        Icon="/Assets/Brand/breeze.ico"
+        Width="400"
+        SizeToContent="Height"
+        CanResize="False"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource ToolbarBackground}">
+
+  <Window.Styles>
+    <Style Selector="TextBlock.label">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Margin" Value="0,0,0,4" />
+      <Setter Property="Foreground" Value="{DynamicResource GlyphBrush}" />
+    </Style>
+
+    <Style Selector="TextBox, ComboBox">
+      <Setter Property="CornerRadius" Value="8" />
+    </Style>
+
+    <Style Selector="Button">
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="MinWidth" Value="82" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+    </Style>
+  </Window.Styles>
+
+  <Window.KeyBindings>
+    <KeyBinding Gesture="Escape" Command="{Binding CancelCommand}" />
+  </Window.KeyBindings>
+
+  <StackPanel Margin="20" Spacing="14">
+
+    <TextBlock Text="{Binding Header}" FontSize="15" FontWeight="SemiBold" />
+
+    <TextBlock Text="{Binding Message}"
+               IsVisible="{Binding HasMessage}"
+               TextWrapping="Wrap" />
+
+    <StackPanel IsVisible="{Binding HasName}">
+      <TextBlock Classes="label" Text="Name" />
+      <TextBox Name="NameBox" Text="{Binding Name, Mode=TwoWay}">
+        <TextBox.KeyBindings>
+          <KeyBinding Gesture="Enter" Command="{Binding ConfirmCommand}" />
+        </TextBox.KeyBindings>
+      </TextBox>
+    </StackPanel>
+
+    <StackPanel IsVisible="{Binding HasUrl}">
+      <TextBlock Classes="label" Text="Address" />
+      <TextBox Text="{Binding Url, Mode=TwoWay}" Watermark="example.com">
+        <TextBox.KeyBindings>
+          <KeyBinding Gesture="Enter" Command="{Binding ConfirmCommand}" />
+        </TextBox.KeyBindings>
+      </TextBox>
+    </StackPanel>
+
+    <StackPanel IsVisible="{Binding HasFolders}">
+      <TextBlock Classes="label" Text="Folder" />
+      <ComboBox ItemsSource="{Binding Folders}"
+                SelectedItem="{Binding SelectedFolder, Mode=TwoWay}"
+                HorizontalAlignment="Stretch">
+        <ComboBox.ItemTemplate>
+          <DataTemplate DataType="vm:BookmarkFolderChoice">
+            <TextBlock Text="{Binding Label}" />
+          </DataTemplate>
+        </ComboBox.ItemTemplate>
+      </ComboBox>
+    </StackPanel>
+
+    <TextBlock Text="{Binding Error}"
+               IsVisible="{Binding HasError}"
+               FontSize="12"
+               TextWrapping="Wrap"
+               Foreground="{DynamicResource AccentBrush}" />
+
+    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+      <Button Content="Cancel" Command="{Binding CancelCommand}" />
+      <Button Content="{Binding ConfirmLabel}" Command="{Binding ConfirmCommand}" IsDefault="True" />
+    </StackPanel>
+
+  </StackPanel>
+
+</Window>

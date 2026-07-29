@@ -21,9 +21,13 @@ until the first stable release.
 - Back, forward, reload and stop.
 - Favicons on tabs, taken from the page the engine has already loaded.
 - Bookmarks: a star in the toolbar adds and removes the current page, and a bookmark bar below
-  the toolbar opens them in the current tab, or in a new one with a middle click. Drag an entry to
-  reorder it, right-click to delete it. The bar appears with your first bookmark and hides again
-  with your last, and `Ctrl+Shift+B` toggles it.
+  the toolbar opens them in the current tab, or in a new one with a middle click. The bar appears
+  with your first bookmark and hides again when nothing is left on it, and `Ctrl+Shift+B` toggles it.
+- Bookmark folders, nested as deeply as you like. Clicking a folder opens a menu beneath it, and
+  folders inside it open as submenus. Right-click anything for open, rename, delete, move to
+  folder, open all, and new bookmark or folder; right-click the bar itself to add to its top level.
+  Drag entries to reorder them, onto a folder to file them inside it, or out of an open folder onto
+  the bar to take them back out.
 - A bundled homepage served from disk with the Breeze logo, a search box and manually managed
   shortcuts (create, edit, delete, drag to reorder), stored as readable JSON.
 - Favicons for shortcuts and bookmarks, discovered from the site and cached on disk.
@@ -47,8 +51,8 @@ daily browser:
   clipboard read are refused outright, with no way to allow them.
 - **History.** Browsing history is kept by the engine and can be cleared from settings, but there
   is no history UI.
-- **Bookmark folders and a bookmark manager.** Bookmarks are one flat list, editable only through
-  the star, dragging and the bar's context menu; there is no renaming or import and export.
+- **A bookmark manager.** Folders, renaming and moving all live on the bar and in its menus; there
+  is no separate manager window, no search, and no import or export.
 - **Keyboard shortcut editing.** Settings lists the shortcuts and the file they are stored in
   accepts overrides, but there is no UI to change them.
 - **Find in page, PDF controls, zoom controls, incognito mode, extensions, profiles, sync.**
@@ -124,7 +128,8 @@ That needs [Inno Setup 6](https://jrsoftware.org/isinfo.php) as well. See
 ### Browsing
 
 - [x] Bookmarks
-- [ ] Bookmark folders and a bookmark manager
+- [x] Bookmark folders
+- [ ] A bookmark manager, with search, import and export
 - [ ] History page
 - [ ] Downloads manager
 - [ ] Find in page

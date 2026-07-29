@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Breeze.Services;
 
@@ -11,7 +12,11 @@ public static class WebLinks
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         PropertyNameCaseInsensitive = true,
-        WriteIndented = true
+        WriteIndented = true,
+
+        // Absent rather than null: a bookmark writes no children, a folder no url, so the file
+        // stays readable and a reader tells the two apart by what is there.
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 
     /// <summary>Normalizes a link target, or null when it is not a web page. A scheme such as

@@ -1,4 +1,4 @@
-# Breeze Architecture
+﻿# Breeze Architecture
 
 Orientation for contributors. Breeze is a native Avalonia shell around the Microsoft Edge
 WebView2 engine: Breeze owns the chrome (title bar, tabs, toolbar, settings), the engine owns
@@ -12,13 +12,14 @@ Program.cs            entry point: shell identity, crash guards, AppBuilder
 App.axaml(.cs)        Fluent theme, merged resource dictionaries, creates the window and model
 Assets/               Palette.axaml, Icons.axaml, CaptionButtons.axaml, Brand/ (logo and icon),
                       StartPage/ (bundled HTML)
-Controls/             native interop and input: WebView, TabStrip, AddressBox, DragArea, MiddleClick
+Controls/             native interop and input: WebView, TabStrip, AddressBox, DragArea, MiddleClick,
+                      DragReorder, BookmarkBar, BookmarkFolderButton, BookmarkMenu
 Models/               data and the interfaces that cross the view/view model boundary
 Services/             process wide, UI agnostic concerns; static classes with cached state
 Utilities/            RelayCommand, KeyboardState, WindowIcons
 ViewModels/           MainWindowViewModel, TabViewModel, SettingsTabViewModel, SettingsViewModel,
-                      BookmarkViewModel, ShortcutRowViewModel
-Views/                MainWindow, SettingsView
+                      BookmarksViewModel and its rows, BookmarkPromptViewModel, ShortcutRowViewModel
+Views/                MainWindow, SettingsView, BookmarkPromptWindow
 tools/                build-brand.ps1, regenerates the logo bitmap and icon from the vector master
 ```
 
@@ -29,7 +30,7 @@ bindings.
 
 Two directions to keep straight:
 
-- **View model to control**: ordinary bindings. `WebView.Source` is two-way — assigning it
+- **View model to control**: ordinary bindings. `WebView.Source` is two-way â€” assigning it
   navigates, and the control writes the document URL back (guarded by `_syncingSource` so the
   echo does not re-navigate). `DocumentTitle`, `Favicon`, `CanGoBack`, `CanGoForward` and
   `IsLoading` are `DirectProperty` with two-way default binding: the control is the source of
@@ -37,14 +38,15 @@ Two directions to keep straight:
 - **Control to view model**: small interfaces in `Models/`, never concrete view model types.
   `WebView` implements `IWebNavigator` and hands itself to its tab through
   `IWebNavigatorHost.Navigator` in `OnDataContextChanged`. `TabStrip` reorders through
-  `ITabReorder` on its `DataContext`.
+  `ITabReorder` on its `DataContext`, and the bookmark bar and folder menus rearrange through
+  `IBookmarkSurface` and `IBookmarkFolder`.
 
 **Services** are static with lazily cached state, deliberately: there is one browser process, one
 settings file, one shortcut file and one bookmark file, so a container would add ceremony without
 adding anything.
 Every service that touches the disk or the network guards its own failures and reports through
 `Services/ErrorLog` (local, size capped). `Utilities/RelayCommand` also catches and logs, because
-Avalonia's Win32 dispatcher does not support a main loop exception handler — an exception escaping
+Avalonia's Win32 dispatcher does not support a main loop exception handler â€” an exception escaping
 a command would terminate the browser and every tab.
 
 ## Theme system
@@ -62,8 +64,8 @@ Three distinct things, often confused:
 - `Apply(theme)` maps `AppTheme` to a `ThemeVariant`, assigns `RequestedThemeVariant` (which drives
   all Avalonia UI through the theme dictionaries in `Assets/Palette.axaml`), then calls
   `ApplyToEngine`.
-- `ApplyToEngine` reads `ActualThemeVariant` — never the requested one, so System resolves to a
-  real value — and writes `CoreWebView2Profile.PreferredColorScheme`.
+- `ApplyToEngine` reads `ActualThemeVariant` â€” never the requested one, so System resolves to a
+  real value â€” and writes `CoreWebView2Profile.PreferredColorScheme`.
 - `Watch` subscribes once to `Application.ActualThemeVariantChanged`, so the OS switching themes
   while the setting is System reaches the engine too.
 - `Register(webView)` is called by `WebView.Configure` as each engine is created: it records the
@@ -91,8 +93,8 @@ input.
 A tab is a `TabViewModel`. `SettingsTabViewModel` derives from it and overrides `Title` and
 `IsWebPage`. `MainWindowViewModel` holds **two collections of the same objects**:
 
-- `Tabs` — strip order. Dragging reorders this one.
-- `HostedTabs` — creation order, add and remove only. The content host binds here.
+- `Tabs` â€” strip order. Dragging reorders this one.
+- `HostedTabs` â€” creation order, add and remove only. The content host binds here.
 
 This split is load bearing. Reordering the collection the content host is bound to would make
 Avalonia rebuild the item containers, which destroys and recreates the `WebView` instances and
@@ -119,7 +121,7 @@ downloaded for it. `CoreWebView2.GetFaviconAsync` hands over a forward only stre
 bitmap decoder cannot read from, so `Services/FaviconImages` buffers the bytes before decoding and
 keeps the result keyed by favicon URL. The same site in several tabs therefore shares one bitmap
 and is never asked of the engine twice; a failure is cached as a failure, and the tab falls back to
-the globe glyph. Because those bitmaps are shared, nothing disposes them — dropping the reference
+the globe glyph. Because those bitmaps are shared, nothing disposes them â€” dropping the reference
 is enough. `FaviconImages` also serves the icons on disk, keyed by file name, for the bookmark bar
 and the homepage.
 
@@ -165,8 +167,8 @@ every settings page that has ever been opened alive.
 The homepage is plain HTML, CSS and JavaScript in `Assets/StartPage`, copied to the output folder
 and served from disk through two WebView2 virtual host mappings registered by `Services/StartPage`:
 
-- `https://breeze.start` → the bundled folder, `HostResourceAccessKind.Deny`.
-- `https://breeze.icons` → `%LOCALAPPDATA%\Breeze\Favicons`, `DenyCors`. `Deny` would block the
+- `https://breeze.start` â†’ the bundled folder, `HostResourceAccessKind.Deny`.
+- `https://breeze.icons` â†’ `%LOCALAPPDATA%\Breeze\Favicons`, `DenyCors`. `Deny` would block the
   page from loading its own cached icons, since the icon host is a different origin.
 
 **Shortcut storage.** `Services/ShortcutStore` keeps `shortcuts.json` (name, url, icon file name).
@@ -190,37 +192,80 @@ requests on the user's behalf, so it is privileged. Two independent gates:
 1. `WebView` toggles `Settings.IsWebMessageEnabled` per navigation, on only while the homepage is
    loaded, so remote pages cannot post at all.
 2. `StartPageBridge` compares the message source against the homepage origin by parsed scheme,
-   host and port — not a string prefix.
+   host and port â€” not a string prefix.
 
 ## Bookmarks
 
-`Services/BookmarkStore` keeps `bookmarks.json` (title, url, icon file name) with the same shape as
-the shortcut store: one cached list, mutations serialized behind a `SemaphoreSlim`, atomic writes,
-and a file that tolerates missing or unknown fields. Storage and validation the two stores have in
-common live in `Services/WebLinks`: the JSON options, the `http`/`https` URL check, the plain file
-name check for icon references, and the read and write helpers.
+`Services/BookmarkStore` keeps `bookmarks.json` with the same philosophy as the shortcut store: one
+cached tree, mutations serialized behind a `SemaphoreSlim`, atomic writes, and a file that tolerates
+missing or unknown fields. Storage and validation the two stores have in common live in
+`Services/WebLinks`: the JSON options, the `http`/`https` URL check, the plain file name check for
+icon references, and the read and write helpers.
+
+**One record, two kinds of entry.** `Models/Bookmark` carries an id, a title, a url, an icon file
+name and a nullable `Children` list. A non-null list is what makes an entry a folder, so an empty
+folder keeps an empty list rather than turning back into a bookmark, and nesting needs no second
+model. Folders hold their children directly, which keeps order and nesting in the one place that is
+written.
+
+**Addressed by id, not by position.** Every entry carries a stable id, generated on creation and
+given to entries in a file written before folders existed. A rename, a delete or a move names one
+exact entry, so the same URL can sit in two folders, and an edit made from a view that has since
+changed either finds its entry or is refused â€” the store then raises `Changed` so the bar reloads
+rather than showing an order that was never stored. `MoveAsync` is the single primitive behind every
+drag and behind "move to folder"; it refuses to put a folder inside itself or inside anything it
+contains. Edits rebuild only the ancestors of the entry that changed and reuse every other record,
+which is what lets the view recognise a change it has already applied.
 
 **Icon pruning.** `FaviconCache` no longer takes the list of icons still in use from its caller.
 Every store that references icons registers a source through `Track` at startup, and `Prune`
 deletes only what no registered source claims. Both stores prune after each change, so a bookmark
 and a shortcut for the same site cannot delete each other's icon.
 
-**View side.** `MainWindowViewModel` rebuilds an `ObservableCollection<BookmarkViewModel>` on the
-store's `Changed` event, marshalled to the UI thread. `IsCurrentPageBookmarked` and `CanBookmark`
-are recomputed when the selected tab changes, when its `Address` changes, and when the store
-changes; `CanBookmark` excludes internal pages, blank tabs and the settings tab. The bar is an
-`ItemsControl` over a horizontal `VirtualizingStackPanel` inside a `ScrollViewer`, so a long list
-costs only the entries on screen.
+**View side.** `ViewModels/BookmarksViewModel` owns the rows and everything an entry can be asked to
+do. On the store's `Changed` event, marshalled to the UI thread, it reconciles the rows against the
+stored tree in place instead of rebuilding them: rows whose entry has not changed are reused, so a
+folder keeps its identity and an open menu keeps working, and a drag that has already moved a row on
+screen does not see it jump when the store confirms the move. `BookmarkRowViewModel` has two
+subclasses, one per kind of entry, and each row carries its own list of context actions so the bar
+and the folder menus describe them once. `MainWindowViewModel` keeps only the star: `CanBookmark` and
+`IsCurrentPageBookmarked` are recomputed when the selected tab changes, when its `Address` changes,
+and when the store changes.
 
-**Bar visibility.** Two rules, derived from the bookmark count and the stored setting rather than
-extra state: going from no bookmarks to one turns the bar on, and removing the last one turns it
-off. In between the setting belongs to the user, so a bar they hid stays hidden.
+**Bar and menus.** The bar is an `ItemsControl` over a horizontal `VirtualizingStackPanel` inside a
+`ScrollViewer`, so a long list costs only the entries on screen. A folder on it is a
+`Controls/BookmarkFolderButton`, which opens `Controls/BookmarkMenu`: a popup built in code, because
+it is recursive and because its rows can be dragged, which a menu control does not allow. A popup is
+a window of its own, so it draws above the engine's native child window. One chain is open at a
+time, it belongs to the folder that opened it, and moving the pointer along the bar hands it over;
+inside a menu, resting on a folder opens its submenu to the side. Row visuals and the context menu
+item theme are templates in `MainWindow.axaml` that the control resolves by key, so the menu is
+built in code but still looks like the rest of the chrome.
+
+**Dragging.** `Controls/DragReorder` is shared by the tab strip, the bar and the menus. It measures
+every item at the start of a drag and works along one axis, across for the bar and down for a menu.
+An `IDragReorderHost` says what a drop means, and the bookmark surfaces implement
+`Models/IBookmarkSurface`: reorder here, drop into the folder at this position, or take an entry from
+somewhere else. Resting over the middle of a folder switches the drag from making room to going
+inside, which the folder shows with an accent fill; the ends of a folder still reorder. An entry
+released outside a menu is offered to the bar, which works out where the pointer left it, and that is
+how an entry comes out of a folder.
+
+**Prompts.** Renaming, adding, moving and the question asked before a folder with entries is deleted
+all use one `BookmarkPromptViewModel`, which describes the fields it needs. `MainWindow` shows it as
+a `BookmarkPromptWindow`; the view models never create a window. A dialog window rather than an
+in-page overlay, again because the engine's child window draws above the page area.
+
+**Bar visibility.** Two rules, derived from whether the bar has anything on it and the stored setting
+rather than extra state: going from an empty bar to one entry turns the bar on, and removing the last
+entry turns it off. A folder counts as something to show, even an empty one. In between the setting
+belongs to the user, so a bar they hid stays hidden.
 
 ## Keyboard shortcuts
 
 `Services/KeyboardShortcuts` is the only place a gesture is written down. It holds the catalog of
-`ShortcutDefinition` (id, label, default gesture), resolves the gesture in force — a parsed override
-from `settings.json`, otherwise the default, otherwise nothing — caches the result so no parsing
+`ShortcutDefinition` (id, label, default gesture), resolves the gesture in force â€” a parsed override
+from `settings.json`, otherwise the default, otherwise nothing â€” caches the result so no parsing
 happens while keys are pressed, and maps a key press to the registered handler. Adding a shortcut
 means adding a definition and registering an action.
 
@@ -300,14 +345,14 @@ state, and it dies with the control.
 - Navigating to the URL already shown is skipped, whereas Chromium generally records an entry.
 
 Every failure mode is benign *because* of the containment above: a middle click opens a slightly
-different URL, or nothing happens. Any future feature that needs real history — a history page,
-session restore, a back button dropdown — should be built on a purpose-designed structure, not on
+different URL, or nothing happens. Any future feature that needs real history â€” a history page,
+session restore, a back button dropdown â€” should be built on a purpose-designed structure, not on
 this mirror.
 
 **The mirror is capped at 100 entries.** This is a memory guard so a long-lived SPA tab cannot grow
 the list without bound. It is not derived from an engine limit. I previously suggested Chromium
 keeps roughly 50 entries per tab; **that was unverified recollection, not a documented guarantee.**
-A search for a Chromium or WebView2 source or documentation reference did not substantiate it — the
+A search for a Chromium or WebView2 source or documentation reference did not substantiate it â€” the
 "50" figures that surfaced belong to Firefox's `browser.sessionhistory.max_entries` preference, plus
 an [empirical StackOverflow observation](https://stackoverflow.com/questions/16355549/the-maximum-value-of-window-history-length)
 that Chrome's `history.length` appeared not to exceed 50. Treat the real WebView2 limit as unknown
@@ -317,3 +362,4 @@ until measured. Breeze has not measured it.
 files land). Web permissions are refused with no way to allow them. `BrowsingData` clears through
 the most recently registered profile, so clearing does nothing if no web tab is open. Local data is
 unencrypted, by design: Breeze cannot defend against code already running as the user.
+
