@@ -166,6 +166,12 @@ begin
   if CurUninstallStep <> usUninstall then
     Exit;
 
+  // An unattended removal has nobody to answer a prompt, so it is not asked and the data is kept,
+  // which is what the prompt defaults to anyway. Without this the uninstall waits for input that
+  // never arrives, with nothing on screen to explain why.
+  if UninstallSilent then
+    Exit;
+
   Data := ExpandConstant('{localappdata}\Breeze');
 
   if not DirExists(Data) then

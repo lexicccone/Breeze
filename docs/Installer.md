@@ -74,6 +74,9 @@ an existing copy or upgrading leaves it untouched.
 The uninstaller asks whether to remove that data as well. No is the default. Choosing No leaves the
 folder exactly as it was; choosing Yes deletes it.
 
+A silent uninstall (`/SILENT` or `/VERYSILENT`) never asks and always keeps the data, so an
+unattended removal cannot stall on a prompt nobody can answer.
+
 ## Not offered: default browser and file associations
 
 Breeze ignores command-line arguments, so it always opens its startup page and cannot yet open a URL
